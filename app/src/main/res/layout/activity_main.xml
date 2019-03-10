@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="16dp"
+    tools:context=".ui.MainActivity">
+
+    <by.anegin.telegram_contests.ui.view.MiniChartView
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        app:fade_bg_color="#f4f8f9"
+        app:range_end="0.8"
+        app:range_start="0.3"
+        app:window_stroke_color="#dae7f0"
+        app:window_stroke_width_left_right="6dp"
+        app:window_stroke_width_top_bottom="2dp" />
+
+</FrameLayout>

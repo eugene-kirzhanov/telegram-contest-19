@@ -13,6 +13,7 @@
         android:id="@+id/miniChartView"
         android:layout_width="match_parent"
         android:layout_height="64dp"
+        android:layout_gravity="center_vertical"
         app:chart_line_width="1dp"
         app:fade_bg_color="#f4f8f9"
         app:range_end="0.8"

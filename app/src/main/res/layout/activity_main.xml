@@ -10,8 +10,10 @@
     tools:context=".ui.MainActivity">
 
     <by.anegin.telegram_contests.ui.view.MiniChartView
+        android:id="@+id/miniChartView"
         android:layout_width="match_parent"
         android:layout_height="64dp"
+        app:chart_line_width="1dp"
         app:fade_bg_color="#f4f8f9"
         app:range_end="0.8"
         app:range_start="0.3"

@@ -53,13 +53,16 @@ class AssetsDataSource(
                 val columnType = typesJson.opt(columnId) ?: continue
 
                 val valuesCount = columnJson.length() - 1
-                val columnValues = LongArray(valuesCount)
-                for (v in 0 until valuesCount) {
-                    columnValues[v] = columnJson.optLong(v + 1)
-                }
 
                 if (columnType == "x") {
+
+                    val columnValues = LongArray(valuesCount)
+                    for (v in 0 until valuesCount) {
+                        columnValues[v] = columnJson.optLong(v + 1)
+                    }
+
                     x = Column.X(columnId, columnValues)
+
                 } else if (columnType == "line") {
 
                     val columnName = namesJson.optString(columnId) ?: "No name"
@@ -70,11 +73,16 @@ class AssetsDataSource(
                         Color.BLACK
                     }
 
-                    lines.add(Column.Line(columnId, columnValues, columnName, columnColor))
+                    val columnValues = LongArray(valuesCount)
+                    for (v in 0 until valuesCount) {
+                        columnValues[v] = columnJson.optLong(v + 1)
+                    }
+
+                    lines.add(Column.Line(columnId, columnName, columnColor, columnValues))
                 }
             }
 
-            if (x != null && !lines.isEmpty()) {
+            if (x != null && lines.isNotEmpty()) {
                 charts.add(Chart(x, lines))
             }
         }

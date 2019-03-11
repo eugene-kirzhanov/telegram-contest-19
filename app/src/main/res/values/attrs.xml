@@ -11,6 +11,8 @@
 
         <attr name="fade_bg_color" format="color" />
         <attr name="fade_alpha" format="float" />
+
+        <attr name="chart_line_width" format="dimension" />
     </declare-styleable>
 
 </resources>

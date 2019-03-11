@@ -20,23 +20,23 @@ import by.anegin.telegram_contests.data.model.Chart
 import java.util.concurrent.Executors
 
 class MiniChartView @JvmOverloads constructor(
-        context: Context,
-        attrs: AttributeSet? = null,
-        defStyleAttr: Int = 0
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
     class ChartData(
-            val chart: Chart,
-            val viewWidth: Float,
-            val viewHeight: Float,
-            val graphs: List<Graph>,
-            val bitmap: Bitmap,
-            val canvas: Canvas
+        val chart: Chart,
+        val viewWidth: Float,
+        val viewHeight: Float,
+        val graphs: List<Graph>,
+        val bitmap: Bitmap,
+        val canvas: Canvas
     )
 
     class Graph(
-            val path: Path,
-            val color: Int
+        val path: Path,
+        val color: Int
     )
 
     companion object {
@@ -58,6 +58,7 @@ class MiniChartView @JvmOverloads constructor(
     private val chartAlphaPaint = Paint()
 
     private val fadeBgColor: Int
+    private val fadeColor: Int
 
     private val windowStrokeWidthTopBottom: Float
     private val windowStrokeWidthLeftRight: Float
@@ -92,20 +93,21 @@ class MiniChartView @JvmOverloads constructor(
         val primaryColor = defAttrs.getColor(0, 0)
         defAttrs.recycle()
 
-        val viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.MiniChartView)
+        val viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.MiniChartView, defStyleAttr, 0)
 
         rangeStart = viewAttrs.getFloat(R.styleable.MiniChartView_range_start, 0f)
         rangeEnd = viewAttrs.getFloat(R.styleable.MiniChartView_range_end, 1f)
         if (rangeStart < 0f) rangeStart = 0f
         if (rangeEnd > 1f) rangeEnd = 1f
 
-        val windowStrokeColor = viewAttrs.getColor(R.styleable.MiniChartView_window_stroke_color, primaryColor)
         fadeBgColor = viewAttrs.getColor(R.styleable.MiniChartView_fade_bg_color, primaryColor)
+        val fadeAlpha = viewAttrs.getFloat(R.styleable.MiniChartView_fade_alpha, 0.5f)
 
+        val windowStrokeColor = viewAttrs.getColor(R.styleable.MiniChartView_window_stroke_color, primaryColor)
         windowStrokeWidthTopBottom =
-                viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f)
+            viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f)
         windowStrokeWidthLeftRight =
-                viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_left_right, 0f)
+            viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_left_right, 0f)
 
         val chartLineWidth = viewAttrs.getDimension(R.styleable.MiniChartView_chart_line_width, 1f)
 
@@ -118,8 +120,8 @@ class MiniChartView @JvmOverloads constructor(
 
         touchRipplePaint.style = Paint.Style.FILL
         touchRipplePaint.color = Color.argb(
-                (Color.alpha(windowStrokeColor) * 0.4f).toInt(),
-                Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
+            (Color.alpha(windowStrokeColor) * 0.4f).toInt(),
+            Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
         )
 
         chartPaint.style = Paint.Style.STROKE
@@ -127,6 +129,8 @@ class MiniChartView @JvmOverloads constructor(
 
         chartAlphaPaint.style = Paint.Style.FILL
         chartAlphaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+
+        fadeColor = Color.argb((fadeAlpha * 255).toInt(), 255, 255, 255)
 
         touchSlop = ViewConfiguration.get(context).scaledTouchSlop
         dragSize = 1.5f * touchSlop
@@ -158,8 +162,8 @@ class MiniChartView @JvmOverloads constructor(
         if (touchRippleRadius > 0f) {
             val windowStrokeColor = windowPaint.color
             touchRipplePaint.color = Color.argb(
-                    (Color.alpha(windowStrokeColor) * 0.4f * touchRippleAlpha).toInt(),
-                    Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
+                (Color.alpha(windowStrokeColor) * 0.4f * touchRippleAlpha).toInt(),
+                Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
             )
             when (dragMode) {
                 DRAG_RANGE_START -> {
@@ -209,12 +213,18 @@ class MiniChartView @JvmOverloads constructor(
             }
 
             // draw out-of-ranges on bitmap with xferMode to fade out parts of chart
-            chartAlphaPaint.color = Color.argb(64, 255, 255, 255)
+            chartAlphaPaint.color = fadeColor
             if (rangeStart > 0f) {
                 data.canvas.drawRect(0f, 0f, rangeStartX, data.bitmap.height.toFloat(), chartAlphaPaint)
             }
             if (rangeEnd < 1f) {
-                data.canvas.drawRect(rangeEndX, 0f, data.bitmap.width.toFloat(), data.bitmap.height.toFloat(), chartAlphaPaint)
+                data.canvas.drawRect(
+                    rangeEndX,
+                    0f,
+                    data.bitmap.width.toFloat(),
+                    data.bitmap.height.toFloat(),
+                    chartAlphaPaint
+                )
             }
             chartAlphaPaint.color = Color.WHITE
             data.canvas.drawRect(rangeStartX, 0f, rangeEndX, data.bitmap.height.toFloat(), chartAlphaPaint)
@@ -413,22 +423,21 @@ class MiniChartView @JvmOverloads constructor(
         val chartHeight = maxY - minY
 
         val scaleX = width / chartWidth
-        val scaleY = (0.9f * height) / chartHeight
+        val scaleY = (0.85f * height) / chartHeight
 
         val graphs = chart.lines.map { line ->
             val path = Path()
             val count = Math.min(xValuesCount, line.values.size)
             if (count > 0) {
-                path.moveTo(
-                        scaleX * (chart.x.values[0].toFloat() - minX),
-                        scaleY * (line.values[0].toFloat() - minY)
-                )
+                path.moveTo(chart.x.values[0].toFloat(), line.values[0].toFloat())
                 for (i in 1 until count) {
-                    path.lineTo(
-                            scaleX * (chart.x.values[i].toFloat() - minX),
-                            scaleY * (line.values[i].toFloat() - minY)
-                    )
+                    path.lineTo(chart.x.values[i].toFloat(), line.values[i].toFloat())
                 }
+
+                val matrix = Matrix()
+                matrix.setTranslate(-minX.toFloat(), -minY.toFloat())
+                matrix.postScale(scaleX, scaleY)
+                path.transform(matrix)
             }
             Graph(path, line.color)
         }
@@ -440,11 +449,11 @@ class MiniChartView @JvmOverloads constructor(
         val chartBitmapCanvas = Canvas(chartBitmap)
 
         return ChartData(
-                chart,
-                width, height,
-                graphs,
-                chartBitmap,
-                chartBitmapCanvas
+            chart,
+            width, height,
+            graphs,
+            chartBitmap,
+            chartBitmapCanvas
         )
     }
 

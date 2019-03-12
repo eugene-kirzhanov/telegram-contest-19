@@ -28,16 +28,19 @@ class ChartView @JvmOverloads constructor(
     private val pathMatrix = Matrix()
 
     init {
+        val defaultGraphLineWidth =
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, context.resources.displayMetrics)
+
         val viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0)
         val contentBgColor = viewAttrs.getColor(R.styleable.ChartView_content_bg_color, Color.TRANSPARENT)
+        val graphLineWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth)
         viewAttrs.recycle()
 
         contentBgPaint.style = Paint.Style.FILL
         contentBgPaint.color = contentBgColor
 
         graphPathPaint.style = Paint.Style.STROKE
-        graphPathPaint.strokeWidth =
-            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, context.resources.displayMetrics)
+        graphPathPaint.strokeWidth = graphLineWidth
     }
 
     override fun onDraw(canvas: Canvas) {

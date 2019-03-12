@@ -16,7 +16,8 @@
         android:layout_height="400dp"
         android:layout_margin="16dp"
         android:padding="16dp"
-        app:content_bg_color="#f4f8f9" />
+        app:content_bg_color="#f4f8f9"
+        app:graph_line_width="2dp" />
 
     <by.anegin.telegram_contests.ui.view.MiniChartView
         android:id="@+id/miniChartView"

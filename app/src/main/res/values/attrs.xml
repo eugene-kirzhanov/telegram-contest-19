@@ -2,6 +2,7 @@
 <resources>
 
     <declare-styleable name="ChartView">
+        <attr name="graph_line_width" format="dimension" />
         <attr name="text_size" format="dimension" />
         <attr name="text_color" format="color" />
         <attr name="guide_line_color" format="color" />

@@ -1,5 +1,6 @@
 package by.anegin.telegram_contests.ui.model
 
+import android.graphics.Matrix
 import android.graphics.Path
 import by.anegin.telegram_contests.data.model.Chart
 
@@ -32,14 +33,18 @@ class UiChart(
                 }
             }
 
+            val matrix = Matrix()
+            matrix.setTranslate(-minX.toFloat(), -minY.toFloat())
+
             val graphs = chart.lines.map { line ->
                 val path = Path()
                 val count = Math.min(xValuesCount, line.values.size)
                 if (count > 0) {
-                    path.moveTo(chart.x.values[0].toFloat() - minX, line.values[0].toFloat() - minY)
+                    path.moveTo(chart.x.values[0].toFloat(), line.values[0].toFloat())
                     for (i in 1 until count) {
-                        path.lineTo(chart.x.values[i].toFloat() - minX, line.values[i].toFloat() - minY)
+                        path.lineTo(chart.x.values[i].toFloat(), line.values[i].toFloat())
                     }
+                    path.transform(matrix)
                 }
                 Graph(path, line.color)
             }

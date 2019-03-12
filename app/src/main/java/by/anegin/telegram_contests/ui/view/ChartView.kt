@@ -3,7 +3,6 @@ package by.anegin.telegram_contests.ui.view
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import by.anegin.telegram_contests.R
@@ -52,29 +51,21 @@ class ChartView @JvmOverloads constructor(
         val uiChart = this.uiChart ?: return
 
         val visibleChartWidth = uiChart.width * (rangeEnd - rangeStart)
-        val xScale = width / uiChart.width
+        val xScale = width / visibleChartWidth
         val yScale = height / uiChart.height
-
-        Log.v("ABC", String.format("visibleChartWidth: %.5f", visibleChartWidth))
 
         val xOffs = -xScale * rangeStart * uiChart.width
 
         pathMatrix.reset()
         pathMatrix.setTranslate(xOffs, height)
-        pathMatrix.preScale(1f, -yScale)
+        pathMatrix.preScale(xScale, -yScale)
 
         uiChart.graphs.forEach { graph ->
+            graphPath.set(graph.path)
+            graphPath.transform(pathMatrix)
+
             graphPathPaint.color = graph.color
-
-            val p = Path(graph.path)
-            //graphPath.reset()
-            //graphPath.addPath(graph.path)
-
-            //canvas.drawPath(graphPath, graphPathPaint)
-
-            p.transform(pathMatrix)
-
-            canvas.drawPath(p, graphPathPaint)
+            canvas.drawPath(graphPath, graphPathPaint)
         }
     }
 

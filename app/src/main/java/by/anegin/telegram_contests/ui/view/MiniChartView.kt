@@ -393,8 +393,11 @@ class MiniChartView @JvmOverloads constructor(
 
         val matrix = Matrix()
         matrix.postScale(scaleX, scaleY)
-        uiChart.graphs.forEach {
-            it.path.transform(matrix)
+        val scaledGraphs = uiChart.graphs.map {
+            val scaledPath = Path(it.path).apply {
+                transform(matrix)
+            }
+            Graph(scaledPath, it.color)
         }
 
         val scaledChartWidth = (uiChart.width * scaleX).toInt()
@@ -405,7 +408,7 @@ class MiniChartView @JvmOverloads constructor(
 
         return Data(
             uiChart, viewWidth, viewHeight,
-            uiChart.graphs,
+            scaledGraphs,
             chartBitmap, chartBitmapCanvas
         )
     }

@@ -7,18 +7,25 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.widget.OverScroller;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
 public class ChartView extends View {
+
+    private static final int TOUCH_STATE_IDLE = 1;
+    private static final int TOUCH_STATE_DRAG = 2;
+    private static final int TOUCH_STATE_FLING = 3;
 
     public interface OnUiChartChangeListener {
         void onUiChartChanged(UiChart uiChart);
@@ -40,9 +47,19 @@ public class ChartView extends View {
     private float rangeStart = 0f;
     private float rangeEnd = 1f;
 
+    private float xScale = 1f;
+
     private UiChart uiChart;
 
     private int touchSlop;
+    private int minFlingVelocity;
+    private int maxFlingVelocity;
+    private VelocityTracker velocityTracker;
+    private OverScroller flingScroller;
+
+    private int touchState = TOUCH_STATE_IDLE;
+    private float downX;
+    private float lastTouchX;
 
     public ChartView(Context context) {
         super(context);
@@ -75,46 +92,48 @@ public class ChartView extends View {
         graphPathPaint.setStyle(Paint.Style.STROKE);
         graphPathPaint.setStrokeWidth(graphLineWidth);
 
-        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        ViewConfiguration vc = ViewConfiguration.get(context);
+        touchSlop = vc.getScaledTouchSlop();
+        minFlingVelocity = vc.getScaledMinimumFlingVelocity();
+        maxFlingVelocity = vc.getScaledMaximumFlingVelocity();
+
+        flingScroller = new OverScroller(context);
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        updateScaleAndOffset();
     }
 
     @Override
     public void onDraw(Canvas canvas) {
-        int width = getWidth();
-        int height = getHeight();
-        if (width == 0 || height == 0) return;
-
-        canvas.drawRect(0f, 0f, width, height, contentBgPaint);
+        canvas.drawRect(0f, 0f, getWidth(), getHeight(), contentBgPaint);
 
         UiChart uiChart = this.uiChart;
-        if (uiChart == null) return;
-
-        float visibleChartWidth = uiChart.width * (rangeEnd - rangeStart);
-        float xScale = width / visibleChartWidth;
-        float yScale = height / (float) uiChart.height;
-
-        float xOffs = -xScale * rangeStart * uiChart.width;
-
-        graphMatrix.reset();
-        graphMatrix.setTranslate(xOffs, height);
-        graphMatrix.preScale(xScale, -yScale);
-
-        for (Graph graph : uiChart.graphs) {
-            Graph transformedGraph = graph.transform(graphMatrix);
-            transformedGraph.draw(canvas, graphPathPaint);
+        if (uiChart != null) {
+            for (Graph graph : uiChart.graphs) {
+                Graph transformedGraph = graph.transform(graphMatrix);
+                transformedGraph.draw(canvas, graphPathPaint);
+            }
         }
     }
 
     public void setRange(float start, float end) {
-        if (rangeStart != start || rangeEnd != end) {
-            rangeStart = start;
-            rangeEnd = end;
-            invalidate();
+        touchState = TOUCH_STATE_IDLE;
+
+        flingScroller.forceFinished(true);
+
+        if (velocityTracker != null) {
+            velocityTracker.recycle();
+            velocityTracker = null;
         }
+
+        updateRanges(start, end);
     }
 
     public void setUiChart(UiChart uiChart) {
         this.uiChart = uiChart;
+        updateScaleAndOffset();
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
         }
@@ -135,23 +154,65 @@ public class ChartView extends View {
 
     // =======
 
-    private static final int TOUCH_STATE_IDLE = 1;
-    private static final int TOUCH_STATE_DRAG = 2;
-    private static final int TOUCH_STATE_FLING = 3;
+    private void updateRanges(float start, float end) {
+        if (start < 0f) {
+            end -= start;
+            start = 0f;
+        }
+        if (end > 1f) {
+            start -= (end - 1f);
+            end = 1f;
+        }
+        if (start != rangeStart || end != rangeEnd) {
+            rangeStart = start;
+            rangeEnd = end;
 
-    private int touchState = TOUCH_STATE_IDLE;
-    private float downX;
-    private float lastTouchX;
+            updateScaleAndOffset();
+
+            if (onRangeChangeListener != null) {
+                onRangeChangeListener.onRangeChangeListener(start, end);
+            }
+
+            invalidate();
+        }
+    }
+
+    private void updateScaleAndOffset() {
+        UiChart uiChart = this.uiChart;
+        if (uiChart == null) return;
+
+        float visibleChartWidth = uiChart.width * (rangeEnd - rangeStart);
+        xScale = getWidth() / visibleChartWidth;
+        float yScale = getHeight() / (float) uiChart.height;
+
+        float xOffs = -xScale * rangeStart * uiChart.width;
+
+        graphMatrix.reset();
+        graphMatrix.setTranslate(xOffs, getHeight());
+        graphMatrix.preScale(xScale, -yScale);
+    }
+
+    // =======
+
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        switch (action) {
+        switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN: {
                 downX = event.getX();
                 lastTouchX = downX;
                 touchState = TOUCH_STATE_IDLE;
+
+                flingScroller.forceFinished(true);
+
+                if (velocityTracker == null) {
+                    velocityTracker = VelocityTracker.obtain();
+                } else {
+                    velocityTracker.clear();
+                }
+                velocityTracker.addMovement(event);
+
                 break;
             }
             case MotionEvent.ACTION_MOVE: {
@@ -163,13 +224,43 @@ public class ChartView extends View {
                     moveChart(touchX - lastTouchX);
                 }
                 lastTouchX = touchX;
+
+                if (velocityTracker != null) {
+                    velocityTracker.addMovement(event);
+                }
                 break;
             }
             case MotionEvent.ACTION_UP: {
+
+                VelocityTracker velocityTracker = this.velocityTracker;
+                this.velocityTracker = null;
+                if (touchState == TOUCH_STATE_DRAG) {
+                    if (velocityTracker != null) {
+                        velocityTracker.computeCurrentVelocity(1000, maxFlingVelocity);
+                        float xVelocity = velocityTracker.getXVelocity();
+                        velocityTracker.recycle();
+
+                        if (Math.abs(xVelocity) > minFlingVelocity) {
+                            touchState = TOUCH_STATE_FLING;
+                            flingChart(xVelocity);
+                            break;
+                        }
+                    }
+                } else {
+                    if (velocityTracker != null) {
+                        velocityTracker.recycle();
+                    }
+                }
+
                 touchState = TOUCH_STATE_IDLE;
+                break;
             }
             case MotionEvent.ACTION_CANCEL: {
                 touchState = TOUCH_STATE_IDLE;
+                if (velocityTracker != null) {
+                    velocityTracker.recycle();
+                    velocityTracker = null;
+                }
             }
         }
         return true;
@@ -179,38 +270,51 @@ public class ChartView extends View {
         UiChart uiChart = this.uiChart;
         if (uiChart == null) return;
 
-        int width = getWidth();
-        float visibleChartWidth = uiChart.width * (rangeEnd - rangeStart);
-        float xScale = width / visibleChartWidth;
-
         float unscaledOffset = dx / xScale;
         float rangeOffs = unscaledOffset / uiChart.width;
 
         float newRangeStart = rangeStart - rangeOffs;
         float newRangeEnd = rangeEnd - rangeOffs;
-        if (newRangeStart < 0f) {
-            newRangeEnd -= newRangeStart;
-            newRangeStart = 0f;
-        }
-        if (newRangeEnd > 1f) {
-            newRangeStart -= (newRangeEnd - 1f);
-            newRangeEnd = 1f;
-        }
+
         updateRanges(newRangeStart, newRangeEnd);
     }
 
-    private void updateRanges(float start, float end) {
-        if (start != rangeStart || end != rangeEnd) {
-            rangeStart = start;
-            rangeEnd = end;
+    private void flingChart(float xVelocity) {
+        UiChart uiChart = this.uiChart;
+        if (uiChart == null) return;
 
-            if (onRangeChangeListener != null) {
-                onRangeChangeListener.onRangeChangeListener(start, end);
-            }
+        int startX = (int) (xScale * rangeStart * uiChart.width);
+        int minX = 0;
+        int maxX = (int) (xScale * uiChart.width) - getWidth();
 
+        flingScroller.forceFinished(true);
+        flingScroller.fling(startX, 0, (int) -xVelocity, 0, minX, maxX, 0, 0);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            postInvalidateOnAnimation();
+        } else {
+            postInvalidate();
+        }
+    }
+
+    @Override
+    public void computeScroll() {
+        if (touchState != TOUCH_STATE_FLING) return;
+        if (flingScroller.computeScrollOffset()) {
+            UiChart uiChart = this.uiChart;
+            if (uiChart == null) return;
+
+            int currOffs = flingScroller.getCurrX();
+            float newRangeStart = (float) currOffs / (xScale * uiChart.width);
+            float newRangeEnd = newRangeStart + (rangeEnd - rangeStart);
+
+            updateRanges(newRangeStart, newRangeEnd);
+        } else {
+            touchState = TOUCH_STATE_IDLE;
             invalidate();
         }
     }
+
 
     // =======
 
@@ -227,8 +331,7 @@ public class ChartView extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
-        rangeStart = savedState.rangeStart;
-        rangeEnd = savedState.rangeEnd;
+        updateRanges(savedState.rangeStart, savedState.rangeStart);
     }
 
     private static class SavedState extends BaseSavedState {

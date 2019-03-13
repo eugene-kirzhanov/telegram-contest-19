@@ -44,39 +44,39 @@ class ChartView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        if (width == 0 || height == 0) return
+//        if (width == 0 || height == 0) return
+//
+//        val width = width.toFloat()
+//        val height = height.toFloat()
+//
+//        canvas.drawRect(0f, 0f, width, height, contentBgPaint)
+//
+//        val uiChart = this.uiChart ?: return
+//
+//        val visibleChartWidth = uiChart.width * (rangeEnd - rangeStart)
+//        val xScale = width / visibleChartWidth
+//        val yScale = height / uiChart.height
+//
+//        val xOffs = -xScale * rangeStart * uiChart.width
+//
+//        pathMatrix.reset()
+//        pathMatrix.setTranslate(xOffs, height)
+//        pathMatrix.preScale(xScale, -yScale)
 
-        val width = width.toFloat()
-        val height = height.toFloat()
-
-        canvas.drawRect(0f, 0f, width, height, contentBgPaint)
-
-        val uiChart = this.uiChart ?: return
-
-        val visibleChartWidth = uiChart.width * (rangeEnd - rangeStart)
-        val xScale = width / visibleChartWidth
-        val yScale = height / uiChart.height
-
-        val xOffs = -xScale * rangeStart * uiChart.width
-
-        pathMatrix.reset()
-        pathMatrix.setTranslate(xOffs, height)
-        pathMatrix.preScale(xScale, -yScale)
-
-        uiChart.graphs.forEach { graph ->
-            graphPath.set(graph.path)
-            graphPath.transform(pathMatrix)
-
-            graphPathPaint.color = graph.color
-            canvas.drawPath(graphPath, graphPathPaint)
-        }
+//        uiChart.graphs.forEach { graph ->
+//            graphPath.set(graph.path)
+//            graphPath.transform(pathMatrix)
+//
+//            graphPathPaint.color = graph.color
+//            canvas.drawPath(graphPath, graphPathPaint)
+//        }
     }
 
     fun setRange(start: Float, end: Float) {
         if (rangeStart != start || rangeEnd != end) {
             rangeStart = start
             rangeEnd = end
-            invalidate()
+//            invalidate()
         }
     }
 

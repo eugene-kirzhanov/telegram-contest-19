@@ -5,8 +5,6 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
-import android.os.Handler
-import android.os.Looper
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -26,16 +24,6 @@ class MiniChartView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-
-    class Data(
-        val chart: UiChart,
-        val viewWidth: Int,
-        val viewHeight: Int,
-        val graphs: List<Graph>,
-        val bitmap: Bitmap,
-        val canvas: Canvas
-    )
-
     companion object {
         private const val DRAG_RANGE = 1
         private const val DRAG_RANGE_START = 2
@@ -44,14 +32,9 @@ class MiniChartView @JvmOverloads constructor(
     }
 
     private val windowPaint = Paint()
-    private val bgPaint = Paint()
     private val touchRipplePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val chartPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)
-
-    private val chartAlphaPaint = Paint()
-
-    private val fadeBgColor: Int
-    private val fadeColor: Int
+    private val fadePaint = Paint()
 
     private val windowStrokeWidthTopBottom: Float
     private val windowStrokeWidthLeftRight: Float
@@ -59,14 +42,14 @@ class MiniChartView @JvmOverloads constructor(
     private var rangeStart = 0f
     private var rangeEnd = 1f
 
-    private val touchSlop: Int
-    private val dragSize: Float
-
     private var downX = 0f
     private var lastTouchX = 0f
     private var inDragMode = false
 
     private var dragMode: Int? = null
+
+    private val touchSlop: Int
+    private val dragSize: Float
 
     private var touchRippleAnimation: Animator? = null
     private var touchRippleRadius = 0f
@@ -74,11 +57,11 @@ class MiniChartView @JvmOverloads constructor(
 
     private var onRangeChangeListener: ((Float, Float) -> Unit)? = null
 
-    private val uiHandler = Handler(Looper.getMainLooper())
     private val updateDataExecutor = Executors.newFixedThreadPool(2)
     private var lastUpdateGeneration = 0L
 
-    private var data: Data? = null
+    private var uiChart: UiChart? = null
+    private var graphs: List<Graph>? = null
 
     init {
         val typedValue = TypedValue()
@@ -87,43 +70,32 @@ class MiniChartView @JvmOverloads constructor(
         defAttrs.recycle()
 
         val viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.MiniChartView, defStyleAttr, 0)
-
         rangeStart = viewAttrs.getFloat(R.styleable.MiniChartView_range_start, 0f)
         rangeEnd = viewAttrs.getFloat(R.styleable.MiniChartView_range_end, 1f)
-        if (rangeStart < 0f) rangeStart = 0f
-        if (rangeEnd > 1f) rangeEnd = 1f
-
-        fadeBgColor = viewAttrs.getColor(R.styleable.MiniChartView_fade_bg_color, primaryColor)
-        val fadeAlpha = viewAttrs.getFloat(R.styleable.MiniChartView_fade_alpha, 0.5f)
-
-        val windowStrokeColor = viewAttrs.getColor(R.styleable.MiniChartView_window_stroke_color, primaryColor)
+        val offWindowAlpha = viewAttrs.getFloat(R.styleable.MiniChartView_off_window_alpha, 0.5f)
+        val windowBgColor = viewAttrs.getColor(R.styleable.MiniChartView_window_bg_color, primaryColor)
         windowStrokeWidthTopBottom =
             viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f)
         windowStrokeWidthLeftRight =
             viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_left_right, 0f)
-
         val chartLineWidth = viewAttrs.getDimension(R.styleable.MiniChartView_chart_line_width, 1f)
-
         viewAttrs.recycle()
 
-        windowPaint.color = windowStrokeColor
-        windowPaint.style = Paint.Style.STROKE
+        if (rangeStart < 0f) rangeStart = 0f
+        if (rangeEnd > 1f) rangeEnd = 1f
 
-        bgPaint.style = Paint.Style.FILL
+        windowPaint.style = Paint.Style.FILL
+        windowPaint.color = windowBgColor
 
         touchRipplePaint.style = Paint.Style.FILL
-        touchRipplePaint.color = Color.argb(
-            (Color.alpha(windowStrokeColor) * 0.4f).toInt(),
-            Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
-        )
+        touchRipplePaint.color = windowPaint.color
 
         chartPaint.style = Paint.Style.STROKE
         chartPaint.strokeWidth = chartLineWidth
 
-        chartAlphaPaint.style = Paint.Style.FILL
-        chartAlphaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-
-        fadeColor = Color.argb((fadeAlpha * 255).toInt(), 255, 255, 255)
+        fadePaint.style = Paint.Style.FILL
+        fadePaint.color = Color.argb((offWindowAlpha * 255).toInt(), 255, 255, 255)
+        fadePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
 
         touchSlop = ViewConfiguration.get(context).scaledTouchSlop
         dragSize = 1.5f * touchSlop
@@ -138,91 +110,40 @@ class MiniChartView @JvmOverloads constructor(
         val rangeStartX = width * rangeStart
         val rangeEndX = width * rangeEnd
 
-        // draw out-of-range background
-        bgPaint.color = fadeBgColor
-        if (rangeStart > 0f) {
-            canvas.drawRect(0f, 0f, rangeStartX, height, bgPaint)
-        }
-        if (rangeEnd < 1f) {
-            canvas.drawRect(rangeEndX, 0f, width, height, bgPaint)
-        }
-
-        // draw touch ripples
-        val touchRippleRadius = this.touchRippleRadius
-        if (touchRippleRadius > 0f) {
-            val windowStrokeColor = windowPaint.color
-            touchRipplePaint.color = Color.argb(
-                (Color.alpha(windowStrokeColor) * 0.4f * touchRippleAlpha).toInt(),
-                Color.red(windowStrokeColor), Color.green(windowStrokeColor), Color.blue(windowStrokeColor)
-            )
-            when (dragMode) {
-                DRAG_RANGE_START -> {
-                    val cx = rangeStartX + windowStrokeWidthLeftRight / 2f
-                    canvas.drawCircle(cx, height / 2f, touchRippleRadius, touchRipplePaint)
-                }
-                DRAG_RANGE_END -> {
-                    val cx = rangeEndX - windowStrokeWidthLeftRight / 2f
-                    canvas.drawCircle(cx, height / 2f, touchRippleRadius, touchRipplePaint)
-                }
-                DRAG_RANGE -> {
-                    val cx = rangeStartX + (rangeEndX - rangeStartX) / 2f
-                    canvas.drawCircle(cx, height / 2f, touchRippleRadius, touchRipplePaint)
-                }
-            }
-        }
-
-        // draw range window
-        if (windowStrokeWidthTopBottom > 0f) {
-            windowPaint.strokeWidth = windowStrokeWidthTopBottom
-            val halfStrokeWidth = windowStrokeWidthTopBottom / 2f
-            canvas.drawLine(rangeStartX, halfStrokeWidth, rangeEndX, halfStrokeWidth, windowPaint)
-            canvas.drawLine(rangeStartX, height - halfStrokeWidth, rangeEndX, height - halfStrokeWidth, windowPaint)
-        }
-        if (windowStrokeWidthLeftRight > 0f) {
-            windowPaint.strokeWidth = windowStrokeWidthLeftRight
-            val halfStrokeWidth = windowStrokeWidthLeftRight / 2f
-            canvas.drawLine(rangeStartX + halfStrokeWidth, 0f, rangeStartX + halfStrokeWidth, height, windowPaint)
-            canvas.drawLine(rangeEndX - halfStrokeWidth, 0f, rangeEndX - halfStrokeWidth, height, windowPaint)
-        }
+        // draw window
+        val windowStart = rangeStartX + windowStrokeWidthLeftRight
+        val windowEnd = rangeEndX - windowStrokeWidthLeftRight
+        canvas.drawRect(0f, 0f, windowStart, height, windowPaint)
+        canvas.drawRect(windowEnd, 0f, width, height, windowPaint)
+        canvas.drawRect(windowStart, 0f, windowEnd, windowStrokeWidthTopBottom, windowPaint)
+        canvas.drawRect(windowStart, height - windowStrokeWidthTopBottom, windowEnd, height, windowPaint)
 
         // draw Chart data
-        val data = this.data
-        if (data?.graphs?.isNotEmpty() == true) {
+        graphs?.forEach { graph ->
+            graph.draw(canvas, chartPaint)
+        }
 
-            // clear chart bitmap
-            data.bitmap.eraseColor(Color.TRANSPARENT)
+        // fade out-of-window range
+        if (rangeStart > 0f) {
+            canvas.drawRect(0f, 0f, rangeStartX, height, fadePaint)
+        }
+        if (rangeEnd < 1f) {
+            canvas.drawRect(rangeEndX, 0f, width, height, fadePaint)
+        }
 
-            // draw chart graphics on bitmap
-            data.graphs.forEach { graph ->
-                chartPaint.color = graph.color
-                data.canvas.drawPath(graph.path, chartPaint)
+        // draw touch ripple
+        val touchRippleRadius = this.touchRippleRadius
+        if (touchRippleRadius > 0f) {
+            val cx = when (dragMode) {
+                DRAG_RANGE_START -> rangeStartX + windowStrokeWidthLeftRight / 2f
+                DRAG_RANGE_END -> rangeEndX - windowStrokeWidthLeftRight / 2f
+                DRAG_RANGE -> rangeStartX + (rangeEndX - rangeStartX) / 2f
+                else -> null
             }
-
-            // draw out-of-ranges on bitmap with xferMode to fade out parts of chart
-            chartAlphaPaint.color = fadeColor
-            if (rangeStart > 0f) {
-                data.canvas.drawRect(0f, 0f, rangeStartX, data.bitmap.height.toFloat(), chartAlphaPaint)
+            if (cx != null) {
+                touchRipplePaint.alpha = (102 * touchRippleAlpha).toInt()
+                canvas.drawCircle(cx, height / 2f, touchRippleRadius, touchRipplePaint)
             }
-            if (rangeEnd < 1f) {
-                data.canvas.drawRect(
-                    rangeEndX,
-                    0f,
-                    data.bitmap.width.toFloat(),
-                    data.bitmap.height.toFloat(),
-                    chartAlphaPaint
-                )
-            }
-            chartAlphaPaint.color = Color.WHITE
-            data.canvas.drawRect(rangeStartX, 0f, rangeEndX, data.bitmap.height.toFloat(), chartAlphaPaint)
-
-            // draw chart bitmap
-            val xOffs = (width - data.bitmap.width) / 2f
-            val yOffs = height - (height - data.bitmap.height) / 2f
-            canvas.save()
-            canvas.translate(xOffs, yOffs)
-            canvas.scale(1f, -1f)
-            canvas.drawBitmap(data.bitmap, 0f, 0f, null)
-            canvas.restore()
         }
     }
 
@@ -352,9 +273,8 @@ class MiniChartView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        val data = this.data
-        if (data != null && (data.viewWidth != width || data.viewHeight != height)) {
-            enqueueUpdateData(data.chart, width, height)
+        uiChart?.let {
+            enqueueUpdateData(it, width, height)
         }
     }
 
@@ -373,11 +293,10 @@ class MiniChartView @JvmOverloads constructor(
     private fun enqueueUpdateData(uiChart: UiChart?, viewWidth: Int, viewHeight: Int) {
         val updateGeneration = ++lastUpdateGeneration
         updateDataExecutor.submit {
-            val newChartData = updateData(uiChart, viewWidth, viewHeight)
+            val newGraphs = updateData(uiChart, viewWidth, viewHeight)
             if (lastUpdateGeneration == updateGeneration) {
-                uiHandler.post {
-                    data?.bitmap?.recycle()
-                    data = newChartData
+                post {
+                    graphs = newGraphs
                     invalidate()
                 }
             }
@@ -385,32 +304,25 @@ class MiniChartView @JvmOverloads constructor(
     }
 
     @WorkerThread
-    private fun updateData(uiChart: UiChart?, viewWidth: Int, viewHeight: Int): Data? {
+    private fun updateData(uiChart: UiChart?, viewWidth: Int, viewHeight: Int): List<Graph>? {
         if (uiChart == null) return null
 
         val scaleX = 1f * viewWidth.toFloat() / uiChart.width
         val scaleY = 0.85f * viewHeight / uiChart.height
 
+        val scaledChartWidth = uiChart.width * scaleX
+        val scaledChartHeight = uiChart.height * scaleY
+
+        val xOffs = (width - scaledChartWidth) / 2f
+        val yOffs = height - (height - scaledChartHeight) / 2f
+
         val matrix = Matrix()
-        matrix.postScale(scaleX, scaleY)
-        val scaledGraphs = uiChart.graphs.map {
-            val scaledPath = Path(it.path).apply {
-                transform(matrix)
-            }
-            Graph(scaledPath, it.color)
+        matrix.setTranslate(xOffs, yOffs)
+        matrix.preScale(scaleX, -scaleY)
+
+        return uiChart.graphs.map {
+            it.transform(matrix)
         }
-
-        val scaledChartWidth = (uiChart.width * scaleX).toInt()
-        val scaledChartHeight = (uiChart.height * scaleY).toInt()
-
-        val chartBitmap = Bitmap.createBitmap(scaledChartWidth, scaledChartHeight, Bitmap.Config.ARGB_8888)
-        val chartBitmapCanvas = Canvas(chartBitmap)
-
-        return Data(
-            uiChart, viewWidth, viewHeight,
-            scaledGraphs,
-            chartBitmap, chartBitmapCanvas
-        )
     }
 
 }

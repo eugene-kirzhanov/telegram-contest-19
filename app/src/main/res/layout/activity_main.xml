@@ -28,11 +28,10 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         app:chart_line_width="1dp"
-        app:fade_alpha="0.3"
-        app:fade_bg_color="#f4f8f9"
+        app:off_window_alpha="0.7"
         app:range_end="0.3"
         app:range_start="0"
-        app:window_stroke_color="#dae7f0"
+        app:window_bg_color="#dae7f0"
         app:window_stroke_width_left_right="6dp"
         app:window_stroke_width_top_bottom="2dp" />
 

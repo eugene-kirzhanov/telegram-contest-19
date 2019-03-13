@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.data.model
+package by.anegin.telegram_contests.core.data.model
 
 sealed class Column(val id: String, val values: LongArray) {
 

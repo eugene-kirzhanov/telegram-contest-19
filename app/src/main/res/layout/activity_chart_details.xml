@@ -8,9 +8,9 @@
     android:clipChildren="false"
     android:clipToPadding="false"
     android:orientation="vertical"
-    tools:context=".ui.MainActivity">
+    tools:context=".features.MainActivity">
 
-    <by.anegin.telegram_contests.ui.view.ChartView
+    <by.anegin.telegram_contests.core.ui.view.ChartView
         android:id="@+id/chartView"
         android:layout_width="match_parent"
         android:layout_height="400dp"
@@ -19,7 +19,7 @@
         app:content_bg_color="#f4f8f9"
         app:graph_line_width="2dp" />
 
-    <by.anegin.telegram_contests.ui.view.MiniChartView
+    <by.anegin.telegram_contests.core.ui.view.MiniChartView
         android:id="@+id/miniChartView"
         android:layout_width="match_parent"
         android:layout_height="56dp"

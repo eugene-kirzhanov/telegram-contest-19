@@ -1,11 +1,11 @@
-package by.anegin.telegram_contests.ui.model
+package by.anegin.telegram_contests.core.ui.model
 
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 
 class Graph(
-    private val points: FloatArray,     // x0, y0, x1, y1,  x1, y1, x2, y2,  x2, y2, x3, y3, ...
+    private val points: FloatArray,     // x0, y0, x1, y1,  x1, y1, x2, y2, ...
     private val color: Int
 ) {
 

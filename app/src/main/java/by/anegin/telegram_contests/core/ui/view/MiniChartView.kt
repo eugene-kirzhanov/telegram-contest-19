@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.ui.view
+package by.anegin.telegram_contests.core.ui.view
 
 import android.animation.Animator
 import android.animation.ValueAnimator
@@ -12,10 +12,9 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
-import androidx.annotation.WorkerThread
 import by.anegin.telegram_contests.R
-import by.anegin.telegram_contests.ui.model.Graph
-import by.anegin.telegram_contests.ui.model.UiChart
+import by.anegin.telegram_contests.core.ui.model.Graph
+import by.anegin.telegram_contests.core.ui.model.UiChart
 import java.util.concurrent.Executors
 
 class MiniChartView @JvmOverloads constructor(
@@ -65,7 +64,7 @@ class MiniChartView @JvmOverloads constructor(
 
     init {
         val typedValue = TypedValue()
-        val defAttrs = context.obtainStyledAttributes(typedValue.data, intArrayOf(R.attr.colorPrimary))
+        val defAttrs = context.obtainStyledAttributes(typedValue.data, intArrayOf(android.R.attr.colorPrimary))
         val primaryColor = defAttrs.getColor(0, 0)
         defAttrs.recycle()
 
@@ -272,7 +271,6 @@ class MiniChartView @JvmOverloads constructor(
     // =============
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
         uiChart?.let {
             enqueueUpdateData(it, width, height)
         }
@@ -303,7 +301,6 @@ class MiniChartView @JvmOverloads constructor(
         }
     }
 
-    @WorkerThread
     private fun updateData(uiChart: UiChart?, viewWidth: Int, viewHeight: Int): List<Graph>? {
         if (uiChart == null) return null
 

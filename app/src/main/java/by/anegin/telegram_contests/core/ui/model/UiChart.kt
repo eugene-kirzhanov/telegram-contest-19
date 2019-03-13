@@ -1,7 +1,7 @@
-package by.anegin.telegram_contests.ui.model
+package by.anegin.telegram_contests.core.ui.model
 
 import android.graphics.Matrix
-import by.anegin.telegram_contests.data.model.Chart
+import by.anegin.telegram_contests.core.data.model.Chart
 
 class UiChart(
     val graphs: List<Graph>,

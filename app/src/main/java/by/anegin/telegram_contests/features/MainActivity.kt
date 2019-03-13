@@ -1,25 +1,24 @@
-package by.anegin.telegram_contests.ui
+package by.anegin.telegram_contests.features
 
+import android.app.Activity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import androidx.appcompat.app.AppCompatActivity
 import by.anegin.telegram_contests.R
-import by.anegin.telegram_contests.data.model.Data
-import by.anegin.telegram_contests.data.source.DataSource
-import by.anegin.telegram_contests.di.app
-import by.anegin.telegram_contests.ui.model.UiChart
-import by.anegin.telegram_contests.ui.view.ChartView
-import by.anegin.telegram_contests.ui.view.MiniChartView
+import by.anegin.telegram_contests.core.data.model.Data
+import by.anegin.telegram_contests.core.di.app
+import by.anegin.telegram_contests.core.ui.model.UiChart
+import by.anegin.telegram_contests.core.ui.view.ChartView
+import by.anegin.telegram_contests.core.ui.view.MiniChartView
 import java.util.concurrent.Executors
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     companion object {
         private const val MENUITEM_ID_FIRST = 42
     }
 
-    private val dataSource: DataSource = app().dataSource
+    private val dataRepository = app().dataRepository
 
     private val loadExecutor = Executors.newSingleThreadExecutor()
     private val showExecutor = Executors.newSingleThreadExecutor()
@@ -32,7 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_chart_details)
 
         chartView = findViewById(R.id.chartView)
 
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         val chartsCount = data?.charts?.size ?: 0
         menu.removeGroup(R.id.action_group_chart_selection)
         for (i in 0 until chartsCount) {
-            val item = menu.add(R.id.action_group_chart_selection, MENUITEM_ID_FIRST + i, Menu.NONE, "Chart ${i + 1}")
+            val item = menu.add(R.id.action_group_chart_selection, MENUITEM_ID_FIRST + i, i, "Chart ${i + 1}")
             item.isCheckable = true
             item.isChecked = currentChartIndex == i
         }
@@ -78,8 +77,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadData() {
         loadExecutor.execute {
-            val data = dataSource.getData()
-            this.data = data
+            this.data = dataRepository.data
             showChart(0)
         }
     }

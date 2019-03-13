@@ -1,12 +1,15 @@
-package by.anegin.telegram_contests.ui.view
+package by.anegin.telegram_contests.core.ui.view
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import by.anegin.telegram_contests.R
-import by.anegin.telegram_contests.ui.model.UiChart
+import by.anegin.telegram_contests.core.ui.model.UiChart
 
 class ChartView @JvmOverloads constructor(
     context: Context,
@@ -24,8 +27,7 @@ class ChartView @JvmOverloads constructor(
 
     private var uiChart: UiChart? = null
 
-    private val graphPath = Path()
-    private val pathMatrix = Matrix()
+    private val graphMatrix = Matrix()
 
     init {
         val defaultGraphLineWidth =
@@ -44,39 +46,36 @@ class ChartView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-//        if (width == 0 || height == 0) return
-//
-//        val width = width.toFloat()
-//        val height = height.toFloat()
-//
-//        canvas.drawRect(0f, 0f, width, height, contentBgPaint)
-//
-//        val uiChart = this.uiChart ?: return
-//
-//        val visibleChartWidth = uiChart.width * (rangeEnd - rangeStart)
-//        val xScale = width / visibleChartWidth
-//        val yScale = height / uiChart.height
-//
-//        val xOffs = -xScale * rangeStart * uiChart.width
-//
-//        pathMatrix.reset()
-//        pathMatrix.setTranslate(xOffs, height)
-//        pathMatrix.preScale(xScale, -yScale)
+        if (width == 0 || height == 0) return
 
-//        uiChart.graphs.forEach { graph ->
-//            graphPath.set(graph.path)
-//            graphPath.transform(pathMatrix)
-//
-//            graphPathPaint.color = graph.color
-//            canvas.drawPath(graphPath, graphPathPaint)
-//        }
+        val width = width.toFloat()
+        val height = height.toFloat()
+
+        canvas.drawRect(0f, 0f, width, height, contentBgPaint)
+
+        val uiChart = this.uiChart ?: return
+
+        val visibleChartWidth = uiChart.width * (rangeEnd - rangeStart)
+        val xScale = width / visibleChartWidth
+        val yScale = height / uiChart.height
+
+        val xOffs = -xScale * rangeStart * uiChart.width
+
+        graphMatrix.reset()
+        graphMatrix.setTranslate(xOffs, height)
+        graphMatrix.preScale(xScale, -yScale)
+
+        uiChart.graphs.forEach { graph ->
+            val transformedGraph = graph.transform(graphMatrix)
+            transformedGraph.draw(canvas, graphPathPaint)
+        }
     }
 
     fun setRange(start: Float, end: Float) {
         if (rangeStart != start || rangeEnd != end) {
             rangeStart = start
             rangeEnd = end
-//            invalidate()
+            invalidate()
         }
     }
 

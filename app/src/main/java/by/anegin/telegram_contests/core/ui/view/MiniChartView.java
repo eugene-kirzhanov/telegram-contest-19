@@ -215,8 +215,8 @@ public class MiniChartView extends View {
                 }
                 if (inDragMode && dragMode != DRAG_NONE) {
                     onMove(touchX, lastTouchX - touchX);
-                    lastTouchX = touchX;
                 }
+                lastTouchX = touchX;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL: {
@@ -243,7 +243,7 @@ public class MiniChartView extends View {
                     newRangeStartX = rangeEndX - 2f * (dragSize + windowStrokeWidthLeftRight);
                     newRangeStart = newRangeStartX / width;
                 }
-                updateRanges(newRangeStart, rangeEnd);
+                updateRanges(newRangeStart, rangeEnd, true);
                 break;
             }
             case DRAG_RANGE_END: {
@@ -256,7 +256,7 @@ public class MiniChartView extends View {
                     newRangeEndX = rangeStartX + 2f * (dragSize + windowStrokeWidthLeftRight);
                     newRangeEnd = newRangeEndX / width;
                 }
-                updateRanges(rangeStart, newRangeEnd);
+                updateRanges(rangeStart, newRangeEnd, true);
                 break;
             }
             case DRAG_RANGE: {
@@ -269,20 +269,20 @@ public class MiniChartView extends View {
                     newRangeEnd = 1f;
                     newRangeStart = 1f - (rangeEnd - rangeStart);
                 }
-                updateRanges(newRangeStart, newRangeEnd);
+                updateRanges(newRangeStart, newRangeEnd, true);
                 break;
             }
         }
     }
 
-    private void updateRanges(float start, float end) {
+    private void updateRanges(float start, float end, boolean notifyListener) {
         if (rangeStart != start || rangeEnd != end) {
             rangeStart = start;
             rangeEnd = end;
 
             invalidate();
 
-            if (onRangeChangeListener != null) {
+            if (notifyListener && onRangeChangeListener != null) {
                 onRangeChangeListener.onRangeChanged(start, end);
             }
         }
@@ -336,6 +336,7 @@ public class MiniChartView extends View {
         enqueueUpdateData(chartView.getUiChart(), getWidth(), getHeight());
 
         chartView.setOnUiChartChangeListener(uiChart -> enqueueUpdateData(uiChart, getWidth(), getHeight()));
+        chartView.setOnRangeChangeListener((start, end) -> updateRanges(start, end, false));
 
         onRangeChangeListener = chartView::setRange;
 

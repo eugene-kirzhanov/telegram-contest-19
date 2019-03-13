@@ -1,5 +1,6 @@
 package by.anegin.telegram_contests.core.ui.view;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -10,7 +11,9 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
@@ -21,7 +24,13 @@ public class ChartView extends View {
         void onUiChartChanged(UiChart uiChart);
     }
 
+    public interface OnRangeChangeListener {
+        void onRangeChangeListener(float start, float end);
+    }
+
     private OnUiChartChangeListener onUiChartChangeListener;
+
+    private OnRangeChangeListener onRangeChangeListener;
 
     private final Paint contentBgPaint = new Paint();
     private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
@@ -32,6 +41,8 @@ public class ChartView extends View {
     private float rangeEnd = 1f;
 
     private UiChart uiChart;
+
+    private int touchSlop;
 
     public ChartView(Context context) {
         super(context);
@@ -63,6 +74,8 @@ public class ChartView extends View {
 
         graphPathPaint.setStyle(Paint.Style.STROKE);
         graphPathPaint.setStrokeWidth(graphLineWidth);
+
+        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
     }
 
     @Override
@@ -114,6 +127,89 @@ public class ChartView extends View {
 
     public void setOnUiChartChangeListener(OnUiChartChangeListener listener) {
         this.onUiChartChangeListener = listener;
+    }
+
+    public void setOnRangeChangeListener(OnRangeChangeListener listener) {
+        this.onRangeChangeListener = listener;
+    }
+
+    // =======
+
+    private static final int TOUCH_STATE_IDLE = 1;
+    private static final int TOUCH_STATE_DRAG = 2;
+    private static final int TOUCH_STATE_FLING = 3;
+
+    private int touchState = TOUCH_STATE_IDLE;
+    private float downX;
+    private float lastTouchX;
+
+    @SuppressLint("ClickableViewAccessibility")
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        int action = event.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN: {
+                downX = event.getX();
+                lastTouchX = downX;
+                touchState = TOUCH_STATE_IDLE;
+                break;
+            }
+            case MotionEvent.ACTION_MOVE: {
+                float touchX = event.getX();
+                if (touchState == TOUCH_STATE_IDLE && Math.abs(touchX - downX) > touchSlop) {
+                    touchState = TOUCH_STATE_DRAG;
+                }
+                if (touchState == TOUCH_STATE_DRAG) {
+                    moveChart(touchX - lastTouchX);
+                }
+                lastTouchX = touchX;
+                break;
+            }
+            case MotionEvent.ACTION_UP: {
+                touchState = TOUCH_STATE_IDLE;
+            }
+            case MotionEvent.ACTION_CANCEL: {
+                touchState = TOUCH_STATE_IDLE;
+            }
+        }
+        return true;
+    }
+
+    private void moveChart(float dx) {
+        UiChart uiChart = this.uiChart;
+        if (uiChart == null) return;
+
+        int width = getWidth();
+        float visibleChartWidth = uiChart.width * (rangeEnd - rangeStart);
+        float xScale = width / visibleChartWidth;
+
+        float unscaledOffset = dx / xScale;
+        float rangeOffs = unscaledOffset / uiChart.width;
+
+        float newRangeStart = rangeStart - rangeOffs;
+        float newRangeEnd = rangeEnd - rangeOffs;
+        if (newRangeStart < 0f) {
+            newRangeEnd -= newRangeStart;
+            newRangeStart = 0f;
+        }
+        if (newRangeEnd > 1f) {
+            newRangeStart -= (newRangeEnd - 1f);
+            newRangeEnd = 1f;
+        }
+        updateRanges(newRangeStart, newRangeEnd);
+    }
+
+    private void updateRanges(float start, float end) {
+        if (start != rangeStart || end != rangeEnd) {
+            rangeStart = start;
+            rangeEnd = end;
+
+            if (onRangeChangeListener != null) {
+                onRangeChangeListener.onRangeChangeListener(start, end);
+            }
+
+            invalidate();
+        }
     }
 
     // =======

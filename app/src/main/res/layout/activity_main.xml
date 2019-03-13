@@ -43,18 +43,7 @@
         android:paddingStart="12dp"
         android:paddingLeft="12dp"
         android:paddingEnd="16dp"
-        android:paddingRight="16dp">
-
-        <CheckBox
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkMark="?android:attr/listChoiceIndicatorMultiple"
-            android:checked="true"
-            android:drawablePadding="20dp"
-            android:text="Hello, world!!!"
-            android:textSize="14sp" />
-
-    </LinearLayout>
+        android:paddingRight="16dp" />
 
     <View
         android:layout_width="match_parent"

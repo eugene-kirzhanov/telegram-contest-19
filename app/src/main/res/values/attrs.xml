@@ -13,10 +13,10 @@
     <declare-styleable name="MiniChartView">
         <attr name="range_start" format="float" />
         <attr name="range_end" format="float" />
-        <attr name="window_bg_color" format="color" />
+        <attr name="fade_color" format="color" />
+        <attr name="window_color" format="color" />
         <attr name="window_stroke_width_top_bottom" format="dimension" />
         <attr name="window_stroke_width_left_right" format="dimension" />
-        <attr name="off_window_alpha" format="float" />
         <attr name="chart_line_width" format="dimension" />
     </declare-styleable>
 

@@ -22,18 +22,39 @@
     <by.anegin.telegram_contests.core.ui.view.MiniChartView
         android:id="@+id/miniChartView"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="48dp"
         android:layout_gravity="center_vertical"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         app:chart_line_width="1dp"
-        app:off_window_alpha="0.7"
+        app:fade_color="#88dae7f0"
         app:range_end="0.3"
         app:range_start="0"
-        app:window_bg_color="#dae7f0"
+        app:window_color="#dae7f0"
         app:window_stroke_width_left_right="6dp"
         app:window_stroke_width_top_bottom="2dp" />
+
+    <LinearLayout
+        android:id="@+id/layoutGraphs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingLeft="12dp"
+        android:paddingEnd="16dp"
+        android:paddingRight="16dp">
+
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checkMark="?android:attr/listChoiceIndicatorMultiple"
+            android:checked="true"
+            android:drawablePadding="20dp"
+            android:text="Hello, world!!!"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <View
         android:layout_width="match_parent"

@@ -6,6 +6,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
@@ -24,12 +26,12 @@ public class ChartView extends View {
     private final Paint contentBgPaint = new Paint();
     private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
+    private final Matrix graphMatrix = new Matrix();
+
     private float rangeStart = 0f;
     private float rangeEnd = 1f;
 
     private UiChart uiChart;
-
-    private final Matrix graphMatrix = new Matrix();
 
     public ChartView(Context context) {
         super(context);
@@ -47,6 +49,8 @@ public class ChartView extends View {
     }
 
     private void init(Context context, AttributeSet attrs, int defStyleAttr) {
+        setSaveEnabled(true);
+
         float defaultGraphLineWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, context.getResources().getDisplayMetrics());
 
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0);
@@ -110,6 +114,58 @@ public class ChartView extends View {
 
     public void setOnUiChartChangeListener(OnUiChartChangeListener listener) {
         this.onUiChartChangeListener = listener;
+    }
+
+    // =======
+
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        Parcelable superState = super.onSaveInstanceState();
+        SavedState savedState = new SavedState(superState);
+        savedState.rangeStart = rangeStart;
+        savedState.rangeEnd = rangeEnd;
+        return savedState;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        SavedState savedState = (SavedState) state;
+        super.onRestoreInstanceState(savedState.getSuperState());
+        rangeStart = savedState.rangeStart;
+        rangeEnd = savedState.rangeEnd;
+    }
+
+    private static class SavedState extends BaseSavedState {
+
+        float rangeStart;
+        float rangeEnd;
+
+        SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        private SavedState(Parcel in) {
+            super(in);
+            rangeStart = in.readFloat();
+            rangeEnd = in.readFloat();
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeFloat(rangeStart);
+            out.writeFloat(rangeEnd);
+        }
+
+        public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
     }
 
 }

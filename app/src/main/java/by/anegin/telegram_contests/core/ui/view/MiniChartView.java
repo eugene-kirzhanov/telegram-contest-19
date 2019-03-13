@@ -5,8 +5,13 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -80,11 +85,13 @@ public class MiniChartView extends View {
     }
 
     private void init(Context context, AttributeSet attrs, int defStyleAttr) {
+        setSaveEnabled(true);
+
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.MiniChartView, defStyleAttr, 0);
         rangeStart = viewAttrs.getFloat(R.styleable.MiniChartView_range_start, 0f);
         rangeEnd = viewAttrs.getFloat(R.styleable.MiniChartView_range_end, 1f);
-        float offWindowAlpha = viewAttrs.getFloat(R.styleable.MiniChartView_off_window_alpha, 0.5f);
-        int windowBgColor = viewAttrs.getColor(R.styleable.MiniChartView_window_bg_color, Color.TRANSPARENT);
+        int fadeColor = viewAttrs.getColor(R.styleable.MiniChartView_fade_color, Color.TRANSPARENT);
+        int windowColor = viewAttrs.getColor(R.styleable.MiniChartView_window_color, Color.TRANSPARENT);
         windowStrokeWidthTopBottom =
                 viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f);
         windowStrokeWidthLeftRight =
@@ -96,17 +103,16 @@ public class MiniChartView extends View {
         if (rangeEnd > 1f) rangeEnd = 1f;
 
         windowPaint.setStyle(Paint.Style.FILL);
-        windowPaint.setColor(windowBgColor);
+        windowPaint.setColor(windowColor);
 
         touchRipplePaint.setStyle(Paint.Style.FILL);
-        touchRipplePaint.setColor(windowBgColor);
+        touchRipplePaint.setColor(windowColor);
 
         chartPaint.setStyle(Paint.Style.STROKE);
         chartPaint.setStrokeWidth(chartLineWidth);
 
         fadePaint.setStyle(Paint.Style.FILL);
-        fadePaint.setColor(Color.argb((int) (offWindowAlpha * 255), 255, 255, 255));
-        fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
+        fadePaint.setColor(fadeColor);
 
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         dragSize = 1.5f * touchSlop;
@@ -122,12 +128,18 @@ public class MiniChartView extends View {
         float rangeEndX = width * rangeEnd;
 
         // draw window
-        float windowStart = rangeStartX + windowStrokeWidthLeftRight;
-        float windowEnd = rangeEndX - windowStrokeWidthLeftRight;
-        canvas.drawRect(0f, 0f, windowStart, height, windowPaint);
-        canvas.drawRect(windowEnd, 0f, width, height, windowPaint);
-        canvas.drawRect(windowStart, 0f, windowEnd, windowStrokeWidthTopBottom, windowPaint);
-        canvas.drawRect(windowStart, height - windowStrokeWidthTopBottom, windowEnd, height, windowPaint);
+        float x1 = rangeStartX + windowStrokeWidthLeftRight / 2f;
+        float x2 = rangeEndX - windowStrokeWidthLeftRight / 2f;
+        windowPaint.setStrokeWidth(windowStrokeWidthLeftRight);
+        canvas.drawLine(x1, 0f, x1, height, windowPaint);
+        canvas.drawLine(x2, 0f, x2, height, windowPaint);
+        float x3 = rangeStartX + windowStrokeWidthLeftRight;
+        float x4 = rangeEndX - windowStrokeWidthLeftRight;
+        float y1 = windowStrokeWidthTopBottom / 2f;
+        float y2 = height - windowStrokeWidthTopBottom / 2f;
+        windowPaint.setStrokeWidth(windowStrokeWidthTopBottom);
+        canvas.drawLine(x3, y1, x4, y1, windowPaint);
+        canvas.drawLine(x3, y2, x4, y2, windowPaint);
 
         // draw Chart data
         List<Graph> graphs = this.graphs;
@@ -137,11 +149,11 @@ public class MiniChartView extends View {
             }
         }
 
-        // fade out-of-window range
-        if (rangeStart > 0f) {
+        // fade out off-window regions
+        if (rangeStartX > 0f) {
             canvas.drawRect(0f, 0f, rangeStartX, height, fadePaint);
         }
-        if (rangeEnd < 1f) {
+        if (rangeEndX < width) {
             canvas.drawRect(rangeEndX, 0f, width, height, fadePaint);
         }
 
@@ -365,6 +377,58 @@ public class MiniChartView extends View {
             graphs.add(graph.transform(matrix));
         }
         return graphs;
+    }
+
+    // ===============
+
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        Parcelable superState = super.onSaveInstanceState();
+        SavedState savedState = new SavedState(superState);
+        savedState.rangeStart = rangeStart;
+        savedState.rangeEnd = rangeEnd;
+        return savedState;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        SavedState savedState = (SavedState) state;
+        super.onRestoreInstanceState(savedState.getSuperState());
+        rangeStart = savedState.rangeStart;
+        rangeEnd = savedState.rangeEnd;
+    }
+
+    private static class SavedState extends BaseSavedState {
+
+        float rangeStart;
+        float rangeEnd;
+
+        SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        private SavedState(Parcel in) {
+            super(in);
+            rangeStart = in.readFloat();
+            rangeEnd = in.readFloat();
+        }
+
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            super.writeToParcel(out, flags);
+            out.writeFloat(rangeStart);
+            out.writeFloat(rangeEnd);
+        }
+
+        public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
     }
 
 }

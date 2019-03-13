@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 import by.anegin.telegram_contests.ChartsApp;
 import by.anegin.telegram_contests.R;
@@ -28,6 +29,7 @@ public class MainActivity extends Activity {
     private final Executor showExecutor = Executors.newSingleThreadExecutor();
 
     private ChartView chartView;
+    private LinearLayout layoutGraphs;
 
     private Data data;
     private int currentChartIndex = 0;
@@ -41,6 +43,8 @@ public class MainActivity extends Activity {
 
         MiniChartView miniChartView = findViewById(R.id.miniChartView);
         miniChartView.attachToChartView(chartView);
+
+        layoutGraphs = findViewById(R.id.layoutGraphs);
 
         dataRepository = ((ChartsApp) getApplication()).getAppComponent().getDataRepository();
         loadData();

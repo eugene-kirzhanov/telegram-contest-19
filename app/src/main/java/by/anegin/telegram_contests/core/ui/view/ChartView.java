@@ -21,15 +21,15 @@ public class ChartView extends View {
 
     private OnUiChartChangeListener onUiChartChangeListener;
 
-    private Paint contentBgPaint = new Paint();
-    private Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private final Paint contentBgPaint = new Paint();
+    private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
     private float rangeStart = 0f;
     private float rangeEnd = 1f;
 
     private UiChart uiChart;
 
-    private Matrix graphMatrix = new Matrix();
+    private final Matrix graphMatrix = new Matrix();
 
     public ChartView(Context context) {
         super(context);

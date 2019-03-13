@@ -58,10 +58,12 @@ public class AssetsDataSource implements DataSource {
             JSONObject typesJson = chartJson.optJSONObject("types");
             JSONObject namesJson = chartJson.optJSONObject("names");
             JSONObject colorsJson = chartJson.optJSONObject("colors");
-            if (columnsJson == null || typesJson == null || namesJson == null || colorsJson == null) continue;
-            if (columnsJson.length() == 0 || typesJson.length() == 0 || namesJson.length() == 0 || colorsJson.length() == 0)
-                continue;
+            if (columnsJson == null || typesJson == null
+                    || namesJson == null || colorsJson == null
+                    || columnsJson.length() == 0 || typesJson.length() == 0
+                    || namesJson.length() == 0 || colorsJson.length() == 0) continue;
 
+            int valuesCount = Integer.MAX_VALUE;
             Column.X x = null;
             List<Column.Line> lines = new ArrayList<>();
             for (int j = 0; j < columnsJson.length(); j++) {
@@ -71,15 +73,17 @@ public class AssetsDataSource implements DataSource {
 
                 String columnId = columnJson.optString(0);
                 String columnType = typesJson.optString(columnId);
-                if (columnType == null) continue;
+                if (columnId == null || columnType == null) continue;
 
-                int valuesCount = columnJson.length() - 1;
+                long[] columnValues = new long[columnJson.length() - 1];
+                for (int v = 0; v < columnValues.length; v++) {
+                    columnValues[v] = columnJson.optLong(v + 1);
+                }
+                if (columnValues.length < valuesCount) {
+                    valuesCount = columnValues.length;
+                }
+
                 if ("x".equals(columnType)) {
-
-                    long[] columnValues = new long[valuesCount];
-                    for (int v = 0; v < valuesCount; v++) {
-                        columnValues[v] = columnJson.optLong(v + 1);
-                    }
 
                     x = new Column.X(columnId, columnValues);
 
@@ -95,16 +99,27 @@ public class AssetsDataSource implements DataSource {
                         columnColor = Color.BLACK;
                     }
 
-                    long[] columnValues = new long[valuesCount];
-                    for (int v = 0; v < valuesCount; v++) {
-                        columnValues[v] = columnJson.optLong(v + 1);
-                    }
-
                     lines.add(new Column.Line(columnId, columnName, columnColor, columnValues));
                 }
             }
 
-            if (x != null && lines.size() > 0) {
+            if (valuesCount > 0 && x != null && lines.size() > 0) {
+
+                if (x.values.length > valuesCount) {
+                    long[] trimmedValues = new long[valuesCount];
+                    System.arraycopy(x.values, 0, trimmedValues, 0, valuesCount);
+                    x = new Column.X(x.id, trimmedValues);
+                }
+
+                for (int j = 0; j < lines.size(); j++) {
+                    Column.Line line = lines.get(j);
+                    if (line.values.length > valuesCount) {
+                        long[] trimmedValues = new long[valuesCount];
+                        System.arraycopy(line.values, 0, trimmedValues, 0, valuesCount);
+                        lines.set(j, new Column.Line(line.id, line.name, line.color, trimmedValues));
+                    }
+                }
+
                 charts.add(new Chart(x, lines));
             }
         }

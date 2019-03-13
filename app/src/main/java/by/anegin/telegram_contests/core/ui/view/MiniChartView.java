@@ -6,8 +6,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.*;
+import android.os.Build;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -28,14 +28,14 @@ public class MiniChartView extends View {
     private static final int DRAG_RANGE_END = 3;
     private static final int DRAG_NONE = 4;
 
-    public interface OnRangeChangeListener {
+    interface OnRangeChangeListener {
         void onRangeChanged(float start, float end);
     }
 
-    private Paint windowPaint = new Paint();
-    private Paint touchRipplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint chartPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
-    private Paint fadePaint = new Paint();
+    private final Paint windowPaint = new Paint();
+    private final Paint touchRipplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint chartPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private final Paint fadePaint = new Paint();
 
     private float windowStrokeWidthTopBottom;
     private float windowStrokeWidthLeftRight;
@@ -58,7 +58,7 @@ public class MiniChartView extends View {
 
     private OnRangeChangeListener onRangeChangeListener;
 
-    private Executor updateDataExecutor = Executors.newFixedThreadPool(2);
+    private final Executor updateDataExecutor = Executors.newFixedThreadPool(2);
     private long lastUpdateGeneration = 0L;
 
     private UiChart uiChart;
@@ -80,16 +80,11 @@ public class MiniChartView extends View {
     }
 
     private void init(Context context, AttributeSet attrs, int defStyleAttr) {
-        TypedValue typedValue = new TypedValue();
-        TypedArray defAttrs = context.obtainStyledAttributes(typedValue.data, new int[]{android.R.attr.colorPrimary});
-        int primaryColor = defAttrs.getColor(0, 0);
-        defAttrs.recycle();
-
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.MiniChartView, defStyleAttr, 0);
         rangeStart = viewAttrs.getFloat(R.styleable.MiniChartView_range_start, 0f);
         rangeEnd = viewAttrs.getFloat(R.styleable.MiniChartView_range_end, 1f);
         float offWindowAlpha = viewAttrs.getFloat(R.styleable.MiniChartView_off_window_alpha, 0.5f);
-        int windowBgColor = viewAttrs.getColor(R.styleable.MiniChartView_window_bg_color, primaryColor);
+        int windowBgColor = viewAttrs.getColor(R.styleable.MiniChartView_window_bg_color, Color.TRANSPARENT);
         windowStrokeWidthTopBottom =
                 viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f);
         windowStrokeWidthLeftRight =
@@ -180,20 +175,20 @@ public class MiniChartView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
         switch (action) {
-            case MotionEvent.ACTION_DOWN: {
+            case MotionEvent.ACTION_DOWN:
                 float rangeStartX = getWidth() * rangeStart;
-                float rangeEndX = getHeight() * rangeEnd;
+                float rangeEndX = getWidth() * rangeEnd;
 
                 downX = event.getX();
                 lastTouchX = downX;
                 inDragMode = false;
 
                 // determine drag mode depending on touch region
-                if (downX > rangeStartX - dragSize && downX < rangeStartX + dragSize + windowStrokeWidthLeftRight) {
+                if (downX >= rangeStartX - dragSize && downX <= rangeStartX + dragSize + windowStrokeWidthLeftRight) {
                     dragMode = DRAG_RANGE_START;
-                } else if (downX > rangeEndX - dragSize - windowStrokeWidthLeftRight && downX < rangeEndX + dragSize) {
+                } else if (downX >= rangeEndX - dragSize - windowStrokeWidthLeftRight && downX <= rangeEndX + dragSize) {
                     dragMode = DRAG_RANGE_END;
-                } else if (downX >= rangeEndX - dragSize - windowStrokeWidthLeftRight && downX <= rangeEndX - dragSize - windowStrokeWidthLeftRight) {
+                } else if (downX >= rangeStartX + dragSize + windowStrokeWidthLeftRight && downX <= rangeEndX - dragSize - windowStrokeWidthLeftRight) {
                     dragMode = DRAG_RANGE;
                 } else {
                     dragMode = DRAG_NONE;
@@ -201,8 +196,7 @@ public class MiniChartView extends View {
 
                 showTouchRippleAnimation();
                 break;
-            }
-            case MotionEvent.ACTION_MOVE: {
+            case MotionEvent.ACTION_MOVE:
                 float touchX = event.getX();
                 if (!inDragMode && Math.abs(touchX - downX) > touchSlop) {
                     inDragMode = true;
@@ -212,7 +206,6 @@ public class MiniChartView extends View {
                     lastTouchX = touchX;
                 }
                 break;
-            }
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL: {
                 hideTouchRippleAnimation();
@@ -308,7 +301,11 @@ public class MiniChartView extends View {
             float value = (float) animation.getAnimatedValue();
             touchRippleRadius = value * (0.7f * getHeight());
             touchRippleAlpha = value;
-            postInvalidateOnAnimation();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                postInvalidateOnAnimation();
+            } else {
+                postInvalidate();
+            }
         });
         return anim;
     }

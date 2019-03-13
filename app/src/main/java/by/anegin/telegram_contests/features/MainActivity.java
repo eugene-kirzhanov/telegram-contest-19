@@ -20,12 +20,12 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
-    public static final int MENUITEM_ID_FIRST = 42;
+    private static final int MENUITEM_ID_FIRST = 42;
 
     private DataRepository dataRepository;
 
-    private Executor loadExecutor = Executors.newSingleThreadExecutor();
-    private Executor showExecutor = Executors.newSingleThreadExecutor();
+    private final Executor loadExecutor = Executors.newSingleThreadExecutor();
+    private final Executor showExecutor = Executors.newSingleThreadExecutor();
 
     private ChartView chartView;
 
@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
         int chartsCount = (data != null && data.charts != null) ? data.charts.size() : 0;
         menu.removeGroup(R.id.action_group_chart_selection);
         for (int i = 0; i < chartsCount; i++) {
-            MenuItem item = menu.add(R.id.action_group_chart_selection, MENUITEM_ID_FIRST + i, i, "Chart ${i + 1}");
+            MenuItem item = menu.add(R.id.action_group_chart_selection, MENUITEM_ID_FIRST + i, i, "Chart " + (i + 1));
             item.setCheckable(true);
             item.setChecked(currentChartIndex == i);
         }
@@ -116,6 +116,7 @@ public class MainActivity extends Activity {
 
     private void toggleTheme() {
         // todo
+        Toast.makeText(this, "Toggle theme", Toast.LENGTH_SHORT).show();
     }
 
 }

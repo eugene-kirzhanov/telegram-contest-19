@@ -16,15 +16,11 @@ public class AppComponentImpl implements AppComponent {
     }
 
     @Override
-    public DataSource getDataSource() {
-        return new AssetsDataSource(appContext, "chart_data.json");
-    }
-
-    @Override
     public DataRepository getDataRepository() {
         synchronized (this) {
             if (dataRepositoryInstance == null) {
-                dataRepositoryInstance = new DataRepository(getDataSource());
+                DataSource dataSource = new AssetsDataSource(appContext, "chart_data.json");
+                dataRepositoryInstance = new DataRepository(dataSource);
             }
             return dataRepositoryInstance;
         }

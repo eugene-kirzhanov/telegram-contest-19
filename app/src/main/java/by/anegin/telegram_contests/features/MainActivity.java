@@ -1,15 +1,21 @@
 package by.anegin.telegram_contests.features;
 
 import android.app.Activity;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import by.anegin.telegram_contests.ChartsApp;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.data.DataRepository;
 import by.anegin.telegram_contests.core.data.model.Chart;
+import by.anegin.telegram_contests.core.data.model.Column;
 import by.anegin.telegram_contests.core.data.model.Data;
 import by.anegin.telegram_contests.core.di.AppComponent;
 import by.anegin.telegram_contests.core.ui.ThemeHelper;
@@ -119,12 +125,17 @@ public class MainActivity extends Activity {
     private void loadData() {
         loadExecutor.execute(() -> {
             try {
-                this.data = dataRepository.getData();
-                showChart(currentChartIndex);
+                Data data = dataRepository.getData();
+                onDataLoaded(data);
             } catch (IOException e) {
                 runOnUiThread(() -> Toast.makeText(this, "Error loading data file", Toast.LENGTH_SHORT).show());
             }
         });
+    }
+
+    private void onDataLoaded(Data data) {
+        this.data = data;
+        showChart(currentChartIndex);
     }
 
     private void showChart(int index) {
@@ -138,6 +149,7 @@ public class MainActivity extends Activity {
 
             runOnUiThread(() -> {
                 chartView.setUiChart(uiChart);
+                updateGraphsList(chart);
                 invalidateOptionsMenu();
             });
         });
@@ -146,6 +158,30 @@ public class MainActivity extends Activity {
     private void toggleTheme() {
         themeHelper.toggleTheme();
         recreate();
+    }
+
+    private void updateGraphsList(Chart chart) {
+        layoutGraphs.removeAllViews();
+        for (Column.Line line : chart.lines) {
+            View itemView = getLayoutInflater().inflate(R.layout.item_graph, layoutGraphs, false);
+
+            CheckBox checkBoxGraph = itemView.findViewById(R.id.checkboxGraph);
+            checkBoxGraph.setText(line.name);
+
+            Drawable drawable;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                drawable = checkBoxGraph.getButtonDrawable();
+            } else {
+                drawable = checkBoxGraph.getBackground();
+            }
+            if (drawable != null) {
+                drawable.setColorFilter(line.color, PorterDuff.Mode.SRC_ATOP);
+            }
+
+            layoutGraphs.addView(itemView,
+                    new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
     }
 
 }

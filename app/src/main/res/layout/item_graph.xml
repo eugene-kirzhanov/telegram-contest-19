@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CheckBox xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/checkboxGraph"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:checkMark="?android:attr/listChoiceIndicatorMultiple"
+    android:button="@drawable/abc_btn_check_material"
     android:checked="true"
-    android:drawablePadding="20dp"
-    android:minHeight="?android:attr/listPreferredItemHeight"
-    android:text="Hello, world!!!"
-    android:textSize="14sp" />
+    android:gravity="center_vertical"
+    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:textColor="?attr/graphs_text_color"
+    android:textSize="14sp"
+    tools:buttonTint="#3cc33f"
+    tools:text="Joined" />

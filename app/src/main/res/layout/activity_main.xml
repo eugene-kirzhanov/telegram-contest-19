@@ -51,11 +51,20 @@
         android:id="@+id/layoutGraphs"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:divider="@drawable/graphs_divider"
         android:orientation="vertical"
         android:paddingStart="12dp"
         android:paddingLeft="12dp"
-        android:paddingEnd="16dp"
-        android:paddingRight="16dp" />
+        android:showDividers="middle"
+        tools:ignore="RtlSymmetry">
+
+        <include layout="@layout/item_graph" />
+
+        <include layout="@layout/item_graph" />
+
+    </LinearLayout>
 
     <View
         android:layout_width="match_parent"

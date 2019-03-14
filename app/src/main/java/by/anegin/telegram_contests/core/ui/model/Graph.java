@@ -6,10 +6,15 @@ import android.graphics.Paint;
 
 public class Graph {
 
+    public final String id;
+
     private final float[] points;     // x0, y0, x1, y1, x1, y1, x2, y2, ...
     private final int color;
 
-    Graph(float[] points, final int color) {
+    private float alpha = 1f;
+
+    Graph(String id, float[] points, final int color) {
+        this.id = id;
         this.points = points;
         this.color = color;
     }
@@ -24,7 +29,7 @@ public class Graph {
     public Graph transform(Matrix matrix) {
         float[] scaledPoints = new float[points.length];
         matrix.mapPoints(scaledPoints, points);
-        return new Graph(scaledPoints, color);
+        return new Graph(id, scaledPoints, color);
     }
 
 }

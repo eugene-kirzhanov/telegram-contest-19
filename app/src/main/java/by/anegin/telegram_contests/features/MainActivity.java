@@ -9,6 +9,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import by.anegin.telegram_contests.ChartsApp;
@@ -27,7 +28,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements CompoundButton.OnCheckedChangeListener {
 
     private static final int MENUITEM_ID_FIRST = 42;
     private static final String STATE_CURRENT_CHART_INDEX = "current_chart_index";
@@ -109,7 +110,7 @@ public class MainActivity extends Activity {
 
         if (chartsCount > 0 && itemId >= MENUITEM_ID_FIRST && itemId < MENUITEM_ID_FIRST + chartsCount) {
             int index = itemId - MENUITEM_ID_FIRST;
-            showChart(index);
+            showChart(index, true);
             return true;
         } else {
             switch (itemId) {
@@ -135,10 +136,10 @@ public class MainActivity extends Activity {
 
     private void onDataLoaded(Data data) {
         this.data = data;
-        showChart(currentChartIndex);
+        showChart(currentChartIndex, false);
     }
 
-    private void showChart(int index) {
+    private void showChart(int index, boolean resetVisibleGraphs) {
         currentChartIndex = index;
         showExecutor.execute(() -> {
             Data data = this.data;
@@ -149,6 +150,9 @@ public class MainActivity extends Activity {
 
             runOnUiThread(() -> {
                 chartView.setUiChart(uiChart);
+                if (resetVisibleGraphs) {
+                    chartView.showAllGraphs();
+                }
                 updateGraphsList(chart);
                 invalidateOptionsMenu();
             });
@@ -167,6 +171,10 @@ public class MainActivity extends Activity {
 
             CheckBox checkBoxGraph = itemView.findViewById(R.id.checkboxGraph);
             checkBoxGraph.setText(line.name);
+            checkBoxGraph.setTag(line.id);
+            checkBoxGraph.setChecked(chartView.isGraphVisible(line.id));
+
+            checkBoxGraph.setOnCheckedChangeListener(this);
 
             Drawable drawable;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -181,6 +189,19 @@ public class MainActivity extends Activity {
             layoutGraphs.addView(itemView,
                     new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                             LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        Object tag = buttonView.getTag();
+        if (tag instanceof String) {
+            String graphId = (String) tag;
+            if (isChecked) {
+                chartView.showGraph(graphId);
+            } else {
+                chartView.hideGraph(graphId);
+            }
         }
     }
 

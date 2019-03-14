@@ -21,6 +21,11 @@ import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class ChartView extends View {
 
     private static final int TOUCH_STATE_IDLE = 1;
@@ -35,9 +40,15 @@ public class ChartView extends View {
         void onRangeChangeListener(float start, float end);
     }
 
+    public interface OnGraphVisibilityChangeListener {
+        void onGraphVisibilityChanged(Set<String> hiddenGraphIds);
+    }
+
     private OnUiChartChangeListener onUiChartChangeListener;
 
     private OnRangeChangeListener onRangeChangeListener;
+
+    private OnGraphVisibilityChangeListener onGraphVisibilityChangeListener;
 
     private final Paint guidelinePaint = new Paint();
     private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
@@ -60,6 +71,8 @@ public class ChartView extends View {
     private int touchState = TOUCH_STATE_IDLE;
     private float downX;
     private float lastTouchX;
+
+    private final Set<String> hiddenGraphIds = new HashSet<>();
 
     public ChartView(Context context) {
         super(context);
@@ -114,8 +127,10 @@ public class ChartView extends View {
         UiChart uiChart = this.uiChart;
         if (uiChart != null) {
             for (Graph graph : uiChart.graphs) {
-                Graph transformedGraph = graph.transform(graphMatrix);
-                transformedGraph.draw(canvas, graphPathPaint);
+                if (!hiddenGraphIds.contains(graph.id)) {
+                    Graph transformedGraph = graph.transform(graphMatrix);
+                    transformedGraph.draw(canvas, graphPathPaint);
+                }
             }
         }
     }
@@ -152,6 +167,42 @@ public class ChartView extends View {
 
     public void setOnRangeChangeListener(OnRangeChangeListener listener) {
         this.onRangeChangeListener = listener;
+    }
+
+    public void setOnGraphVisibilityChangeListener(OnGraphVisibilityChangeListener listener) {
+        this.onGraphVisibilityChangeListener = listener;
+    }
+
+    public void hideGraph(String id) {
+        if (hiddenGraphIds.add(id)) {
+            if (onGraphVisibilityChangeListener != null) {
+                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+            }
+            invalidate();
+        }
+    }
+
+    public void showGraph(String id) {
+        if (hiddenGraphIds.remove(id)) {
+            if (onGraphVisibilityChangeListener != null) {
+                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+            }
+            invalidate();
+        }
+    }
+
+    public boolean isGraphVisible(String id) {
+        return !hiddenGraphIds.contains(id);
+    }
+
+    public void showAllGraphs() {
+        if (hiddenGraphIds.size() > 0) {
+            hiddenGraphIds.clear();
+            if (onGraphVisibilityChangeListener != null) {
+                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+            }
+            invalidate();
+        }
     }
 
     // =======
@@ -324,6 +375,7 @@ public class ChartView extends View {
     protected Parcelable onSaveInstanceState() {
         Parcelable superState = super.onSaveInstanceState();
         SavedState savedState = new SavedState(superState);
+        savedState.hiddenGraphIds = new ArrayList<>(hiddenGraphIds);
         savedState.rangeStart = rangeStart;
         savedState.rangeEnd = rangeEnd;
         return savedState;
@@ -333,11 +385,14 @@ public class ChartView extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
+        hiddenGraphIds.clear();
+        hiddenGraphIds.addAll(savedState.hiddenGraphIds);
         updateRanges(savedState.rangeStart, savedState.rangeEnd);
     }
 
     private static class SavedState extends BaseSavedState {
 
+        List<String> hiddenGraphIds;
         float rangeStart;
         float rangeEnd;
 
@@ -347,6 +402,7 @@ public class ChartView extends View {
 
         private SavedState(Parcel in) {
             super(in);
+            hiddenGraphIds = in.createStringArrayList();
             rangeStart = in.readFloat();
             rangeEnd = in.readFloat();
         }
@@ -354,6 +410,7 @@ public class ChartView extends View {
         @Override
         public void writeToParcel(Parcel out, int flags) {
             super.writeToParcel(out, flags);
+            out.writeStringList(hiddenGraphIds);
             out.writeFloat(rangeStart);
             out.writeFloat(rangeEnd);
         }

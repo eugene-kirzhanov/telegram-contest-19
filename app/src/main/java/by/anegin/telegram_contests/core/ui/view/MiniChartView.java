@@ -22,7 +22,9 @@ import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -68,6 +70,8 @@ public class MiniChartView extends View {
 
     private UiChart uiChart;
     private List<Graph> graphs;
+
+    private final Set<String> hiddenGraphIds = new HashSet<>();
 
     public MiniChartView(Context context) {
         super(context);
@@ -145,7 +149,9 @@ public class MiniChartView extends View {
         List<Graph> graphs = this.graphs;
         if (graphs != null) {
             for (Graph graph : graphs) {
-                graph.draw(canvas, chartPaint);
+                if (!hiddenGraphIds.contains(graph.id)) {
+                    graph.draw(canvas, chartPaint);
+                }
             }
         }
 
@@ -337,6 +343,11 @@ public class MiniChartView extends View {
 
         chartView.setOnUiChartChangeListener(uiChart -> enqueueUpdateData(uiChart, getWidth(), getHeight()));
         chartView.setOnRangeChangeListener((start, end) -> updateRanges(start, end, false));
+        chartView.setOnGraphVisibilityChangeListener(hiddenGraphIds -> {
+            this.hiddenGraphIds.clear();
+            this.hiddenGraphIds.addAll(hiddenGraphIds);
+            invalidate();
+        });
 
         onRangeChangeListener = chartView::setRange;
 
@@ -386,6 +397,7 @@ public class MiniChartView extends View {
     protected Parcelable onSaveInstanceState() {
         Parcelable superState = super.onSaveInstanceState();
         SavedState savedState = new SavedState(superState);
+        savedState.hiddenGraphIds = new ArrayList<>(hiddenGraphIds);
         savedState.rangeStart = rangeStart;
         savedState.rangeEnd = rangeEnd;
         return savedState;
@@ -395,12 +407,15 @@ public class MiniChartView extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
+        hiddenGraphIds.clear();
+        hiddenGraphIds.addAll(savedState.hiddenGraphIds);
         rangeStart = savedState.rangeStart;
         rangeEnd = savedState.rangeEnd;
     }
 
     private static class SavedState extends BaseSavedState {
 
+        List<String> hiddenGraphIds;
         float rangeStart;
         float rangeEnd;
 
@@ -410,6 +425,7 @@ public class MiniChartView extends View {
 
         private SavedState(Parcel in) {
             super(in);
+            hiddenGraphIds = in.createStringArrayList();
             rangeStart = in.readFloat();
             rangeEnd = in.readFloat();
         }
@@ -417,6 +433,7 @@ public class MiniChartView extends View {
         @Override
         public void writeToParcel(Parcel out, int flags) {
             super.writeToParcel(out, flags);
+            out.writeStringList(hiddenGraphIds);
             out.writeFloat(rangeStart);
             out.writeFloat(rangeEnd);
         }

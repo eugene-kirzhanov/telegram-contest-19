@@ -5,6 +5,7 @@ import by.anegin.telegram_contests.core.data.DataRepository;
 import by.anegin.telegram_contests.core.data.source.DataSource;
 import by.anegin.telegram_contests.core.data.source.impl.AssetsDataSource;
 import by.anegin.telegram_contests.core.di.AppComponent;
+import by.anegin.telegram_contests.core.ui.ThemeHelper;
 
 public class AppComponentImpl implements AppComponent {
 
@@ -24,6 +25,11 @@ public class AppComponentImpl implements AppComponent {
             }
             return dataRepositoryInstance;
         }
+    }
+
+    @Override
+    public ThemeHelper getThemeHelper() {
+        return new ThemeHelper(appContext);
     }
 
 }

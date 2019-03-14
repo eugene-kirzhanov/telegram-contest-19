@@ -4,20 +4,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@android:color/white"
+    android:background="?attr/chart_bg_color"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:orientation="vertical"
     tools:context=".features.MainActivity">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="@string/followers"
+        android:textColor="?attr/title_text_color"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
     <by.anegin.telegram_contests.core.ui.view.ChartView
         android:id="@+id/chartView"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="340dp"
         android:layout_margin="16dp"
         android:padding="16dp"
-        app:content_bg_color="#f4f8f9"
-        app:graph_line_width="2dp" />
+        app:graph_line_width="2dp"
+        app:guide_line_color="?attr/chart_guideline_color"
+        app:guide_line_width="1dp" />
 
     <by.anegin.telegram_contests.core.ui.view.MiniChartView
         android:id="@+id/miniChartView"
@@ -28,11 +40,11 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         app:chart_line_width="1dp"
-        app:fade_color="#88dae7f0"
+        app:fade_color="?attr/minichart_fade_color"
         app:range_end="0.3"
         app:range_start="0"
-        app:window_color="#dae7f0"
-        app:window_stroke_width_left_right="6dp"
+        app:window_color="?attr/minichart_window_color"
+        app:window_stroke_width_left_right="5dp"
         app:window_stroke_width_top_bottom="2dp" />
 
     <LinearLayout
@@ -48,6 +60,6 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#e4e4e4" />
+        android:background="?attr/chart_bottom_line_color" />
 
 </LinearLayout>

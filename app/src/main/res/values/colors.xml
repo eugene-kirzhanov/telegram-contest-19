@@ -1,8 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#517da2</color>
-    <color name="colorPrimaryDark">#426382</color>
-    <color name="colorAccent">#3896d4</color>
 
-    <color name="background">#f0f0f0</color>
+    <!-- Light theme -->
+
+    <color name="background_light">#f0f0f0</color>
+
+    <color name="chart_background_light">#ffffff</color>
+    <color name="chart_guideline_light">#e5ebef</color>
+    <color name="minichart_fade_color_light">#aaf4f4f8</color>
+    <color name="minichart_window_color_light">#dbe7f0</color>
+
+    <color name="chart_bottom_line_light">#e4e4e4</color>
+
+    <color name="colorPrimary_light">#517da2</color>
+    <color name="colorPrimaryDark_light">#426382</color>
+    <color name="colorAccent_light">#3896d4</color>
+
+    <!-- Dark theme -->
+
+    <color name="background_dark">#151e27</color>
+
+    <color name="chart_background_dark">#1d2733</color>
+    <color name="chart_guideline_dark">#131c26</color>
+    <color name="minichart_fade_color_dark">#aa151e27</color>
+    <color name="minichart_window_color_dark">#2b4256</color>
+
+    <color name="chart_bottom_line_dark">#19222c</color>
+
+    <color name="colorPrimary_dark">#212d3b</color>
+    <color name="colorPrimaryDark_dark">#1a242e</color>
+    <color name="colorAccent_dark">#7bc4fb</color>
+
 </resources>

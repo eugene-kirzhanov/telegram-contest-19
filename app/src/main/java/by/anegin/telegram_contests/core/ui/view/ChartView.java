@@ -39,7 +39,7 @@ public class ChartView extends View {
 
     private OnRangeChangeListener onRangeChangeListener;
 
-    private final Paint contentBgPaint = new Paint();
+    private final Paint guidelinePaint = new Paint();
     private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
     private final Matrix graphMatrix = new Matrix();
@@ -82,12 +82,14 @@ public class ChartView extends View {
         float defaultGraphLineWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, context.getResources().getDisplayMetrics());
 
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0);
-        int contentBgColor = viewAttrs.getColor(R.styleable.ChartView_content_bg_color, Color.TRANSPARENT);
+        int guidelineColor = viewAttrs.getColor(R.styleable.ChartView_guide_line_color, Color.TRANSPARENT);
+        float guidelineWidth = viewAttrs.getDimension(R.styleable.ChartView_guide_line_width, 0f);
         float graphLineWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
         viewAttrs.recycle();
 
-        contentBgPaint.setStyle(Paint.Style.FILL);
-        contentBgPaint.setColor(contentBgColor);
+        guidelinePaint.setStyle(Paint.Style.STROKE);
+        guidelinePaint.setColor(guidelineColor);
+        guidelinePaint.setStrokeWidth(guidelineWidth);
 
         graphPathPaint.setStyle(Paint.Style.STROKE);
         graphPathPaint.setStrokeWidth(graphLineWidth);
@@ -107,7 +109,7 @@ public class ChartView extends View {
 
     @Override
     public void onDraw(Canvas canvas) {
-        canvas.drawRect(0f, 0f, getWidth(), getHeight(), contentBgPaint);
+        canvas.drawRect(0f, 0f, getWidth(), getHeight(), guidelinePaint);
 
         UiChart uiChart = this.uiChart;
         if (uiChart != null) {
@@ -331,7 +333,7 @@ public class ChartView extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
-        updateRanges(savedState.rangeStart, savedState.rangeStart);
+        updateRanges(savedState.rangeStart, savedState.rangeEnd);
     }
 
     private static class SavedState extends BaseSavedState {

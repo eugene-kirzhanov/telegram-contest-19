@@ -1,9 +1,15 @@
 <resources>
 
-    <style name="AppTheme" parent="AppThemeBase">
-        <item name="android:colorPrimary">@color/colorPrimary</item>
-        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="android:colorAccent">@color/colorAccent</item>
+    <style name="AppThemeLight" parent="BaseAppTheme.Light">
+        <item name="android:colorPrimary">@color/colorPrimary_light</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark_light</item>
+        <item name="android:colorAccent">@color/colorAccent_light</item>
+    </style>
+
+    <style name="AppThemeDark" parent="BaseAppTheme.Dark">
+        <item name="android:colorPrimary">@color/colorPrimary_dark</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark_dark</item>
+        <item name="android:colorAccent">@color/colorAccent_dark</item>
     </style>
 
 </resources>

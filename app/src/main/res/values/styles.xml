@@ -1,9 +1,33 @@
 <resources>
 
-    <style name="AppThemeBase">
-        <item name="android:windowBackground">@color/background</item>
+    <style name="BaseAppTheme" />
+
+    <style name="BaseAppTheme.Light">
+        <item name="android:windowBackground">@color/background_light</item>
+
+        <item name="chart_bg_color">@color/chart_background_light</item>
+        <item name="chart_guideline_color">@color/chart_guideline_light</item>
+        <item name="minichart_fade_color">@color/minichart_fade_color_light</item>
+        <item name="minichart_window_color">@color/minichart_window_color_light</item>
+        <item name="chart_bottom_line_color">@color/chart_bottom_line_light</item>
+
+        <item name="title_text_color">@color/colorAccent_light</item>
     </style>
 
-    <style name="AppTheme" parent="AppThemeBase"/>
+    <style name="BaseAppTheme.Dark">
+        <item name="android:windowBackground">@color/background_dark</item>
+
+        <item name="chart_bg_color">@color/chart_background_dark</item>
+        <item name="chart_guideline_color">@color/chart_guideline_dark</item>
+        <item name="minichart_fade_color">@color/minichart_fade_color_dark</item>
+        <item name="minichart_window_color">@color/minichart_window_color_dark</item>
+        <item name="chart_bottom_line_color">@color/chart_bottom_line_dark</item>
+
+        <item name="title_text_color">@color/colorAccent_dark</item>
+    </style>
+
+    <style name="AppThemeLight" parent="BaseAppTheme.Light" />
+
+    <style name="AppThemeDark" parent="BaseAppTheme.Dark" />
 
 </resources>

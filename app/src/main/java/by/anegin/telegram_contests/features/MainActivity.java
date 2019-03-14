@@ -11,6 +11,8 @@ import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.data.DataRepository;
 import by.anegin.telegram_contests.core.data.model.Chart;
 import by.anegin.telegram_contests.core.data.model.Data;
+import by.anegin.telegram_contests.core.di.AppComponent;
+import by.anegin.telegram_contests.core.ui.ThemeHelper;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.view.ChartView;
 import by.anegin.telegram_contests.core.ui.view.MiniChartView;
@@ -22,8 +24,11 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
 
     private static final int MENUITEM_ID_FIRST = 42;
+    private static final String STATE_CURRENT_CHART_INDEX = "current_chart_index";
 
     private DataRepository dataRepository;
+
+    private ThemeHelper themeHelper;
 
     private final Executor loadExecutor = Executors.newSingleThreadExecutor();
     private final Executor showExecutor = Executors.newSingleThreadExecutor();
@@ -37,6 +42,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        prepareDependencies();
+
+        int theme = themeHelper.getTheme();
+        setTheme(theme);
+
         setContentView(R.layout.activity_main);
 
         chartView = findViewById(R.id.chartView);
@@ -44,10 +54,25 @@ public class MainActivity extends Activity {
         MiniChartView miniChartView = findViewById(R.id.miniChartView);
         miniChartView.attachToChartView(chartView);
 
+        if (savedInstanceState != null) {
+            currentChartIndex = savedInstanceState.getInt(STATE_CURRENT_CHART_INDEX);
+        }
+
         layoutGraphs = findViewById(R.id.layoutGraphs);
 
-        dataRepository = ((ChartsApp) getApplication()).getAppComponent().getDataRepository();
         loadData();
+    }
+
+    private void prepareDependencies() {
+        AppComponent appComponent = ((ChartsApp) getApplication()).getAppComponent();
+        dataRepository = appComponent.getDataRepository();
+        themeHelper = appComponent.getThemeHelper();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_CURRENT_CHART_INDEX, currentChartIndex);
     }
 
     @Override
@@ -95,7 +120,7 @@ public class MainActivity extends Activity {
         loadExecutor.execute(() -> {
             try {
                 this.data = dataRepository.getData();
-                showChart(0);
+                showChart(currentChartIndex);
             } catch (IOException e) {
                 runOnUiThread(() -> Toast.makeText(this, "Error loading data file", Toast.LENGTH_SHORT).show());
             }
@@ -119,8 +144,8 @@ public class MainActivity extends Activity {
     }
 
     private void toggleTheme() {
-        // todo
-        Toast.makeText(this, "Toggle theme", Toast.LENGTH_SHORT).show();
+        themeHelper.toggleTheme();
+        recreate();
     }
 
 }

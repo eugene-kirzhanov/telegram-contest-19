@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <declare-styleable name="AppTheme">
+        <attr name="chart_bg_color" format="color" />
+        <attr name="chart_guideline_color" format="color" />
+        <attr name="minichart_fade_color" format="color" />
+        <attr name="minichart_window_color" format="color" />
+        <attr name="chart_bottom_line_color" format="color" />
+        <attr name="title_text_color" format="color" />
+    </declare-styleable>
+
     <declare-styleable name="ChartView">
         <attr name="graph_line_width" format="dimension" />
         <attr name="text_size" format="dimension" />
         <attr name="text_color" format="color" />
         <attr name="guide_line_color" format="color" />
         <attr name="guide_line_width" format="dimension" />
-        <attr name="content_bg_color" format="color" />
     </declare-styleable>
 
     <declare-styleable name="MiniChartView">

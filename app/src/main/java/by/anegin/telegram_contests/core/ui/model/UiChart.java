@@ -43,7 +43,7 @@ public class UiChart {
             float[] points = lineToPoints(chart.x.values, line.values);
             if (points.length > 0) {
                 matrix.mapPoints(points);
-                graphs.add(new Graph(line.id, points, line.color));
+                graphs.add(new Graph(line.id, points, line.color, Graph.STATE_VISIBLE));
             }
         }
 

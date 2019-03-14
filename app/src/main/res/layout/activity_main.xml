@@ -10,8 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/chart_bg_color"
-        android:clipChildren="false"
-        android:clipToPadding="false"
         android:orientation="vertical">
 
         <TextView

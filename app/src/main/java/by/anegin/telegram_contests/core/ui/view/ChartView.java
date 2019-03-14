@@ -12,19 +12,21 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
-import android.view.MotionEvent;
-import android.view.VelocityTracker;
-import android.view.View;
-import android.view.ViewConfiguration;
+import android.view.*;
 import android.widget.OverScroller;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
+import by.anegin.telegram_contests.core.utils.AtomicRange;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ChartView extends View {
 
@@ -55,10 +57,11 @@ public class ChartView extends View {
 
     private final Matrix graphMatrix = new Matrix();
 
-    private float rangeStart = 0f;
-    private float rangeEnd = 1f;
+    private final AtomicRange range = new AtomicRange();
 
+    private float xOffs = 0f;
     private float xScale = 1f;
+    private volatile float yScale = 1f;
 
     private UiChart uiChart;
 
@@ -73,6 +76,12 @@ public class ChartView extends View {
     private float lastTouchX;
 
     private final Set<String> hiddenGraphIds = new HashSet<>();
+
+    private ScaleThread scaleThread;
+
+    private final ExecutorService yScaleCalculateExecutor = Executors.newFixedThreadPool(2);
+    private Future<?> yScaleCalculationTask;
+    private final AtomicLong lastCalculateGeneration = new AtomicLong(0);
 
     public ChartView(Context context) {
         super(context);
@@ -116,8 +125,24 @@ public class ChartView extends View {
     }
 
     @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        scaleThread = new ScaleThread(yScale);
+        scaleThread.start();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        if (scaleThread != null) {
+            scaleThread.cancel();
+            scaleThread = null;
+        }
+        super.onDetachedFromWindow();
+    }
+
+    @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        updateScaleAndOffset();
+        calculateScaleAndOffset(false);
     }
 
     @Override
@@ -135,7 +160,7 @@ public class ChartView extends View {
         }
     }
 
-    public void setRange(float start, float end) {
+    public void setRange(float start, float end, boolean animateYScale) {
         touchState = TOUCH_STATE_IDLE;
 
         flingScroller.forceFinished(true);
@@ -145,12 +170,13 @@ public class ChartView extends View {
             velocityTracker = null;
         }
 
-        updateRanges(start, end);
+        updateRanges(start, end, animateYScale);
+        invalidateOnAnimation();
     }
 
     public void setUiChart(UiChart uiChart) {
         this.uiChart = uiChart;
-        updateScaleAndOffset();
+        calculateScaleAndOffset(false);
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
         }
@@ -207,7 +233,7 @@ public class ChartView extends View {
 
     // =======
 
-    private void updateRanges(float start, float end) {
+    private void updateRanges(float start, float end, boolean animateYScale) {
         if (start < 0f) {
             end -= start;
             start = 0f;
@@ -216,37 +242,64 @@ public class ChartView extends View {
             start -= (end - 1f);
             end = 1f;
         }
-        if (start != rangeStart || end != rangeEnd) {
-            rangeStart = start;
-            rangeEnd = end;
-
-            updateScaleAndOffset();
-
+        if (range.checkNotEqualsAndSet(start, end)) {
             if (onRangeChangeListener != null) {
                 onRangeChangeListener.onRangeChangeListener(start, end);
             }
-
-            invalidate();
+            calculateScaleAndOffset(animateYScale);
         }
     }
 
-    private void updateScaleAndOffset() {
+    private void calculateScaleAndOffset(boolean animateYScale) {
         UiChart uiChart = this.uiChart;
         if (uiChart == null) return;
 
-        float visibleChartWidth = uiChart.width * (rangeEnd - rangeStart);
+        float visibleChartWidth = uiChart.width * range.getSize();
         xScale = getWidth() / visibleChartWidth;
-        float yScale = getHeight() / (float) uiChart.height;
+        xOffs = -xScale * range.getStart() * uiChart.width;
 
-        float xOffs = -xScale * rangeStart * uiChart.width;
+        updateGraphMatrix(yScale);
 
+        long calculateGeneration = lastCalculateGeneration.incrementAndGet();
+        float rangeStart = range.getStart();
+        float rangeEnd = range.getEnd();
+        if (yScaleCalculationTask != null) {
+            yScaleCalculationTask.cancel(true);
+            yScaleCalculationTask = null;
+        }
+        yScaleCalculationTask = yScaleCalculateExecutor.submit(() -> {
+            float startX = uiChart.width * rangeStart;
+            float endX = uiChart.width * rangeEnd;
+
+            float maxY = 0f;
+            for (Graph graph : uiChart.graphs) {
+                float max = graph.findMaxYInRange(startX, endX);
+                if (max > maxY) maxY = max;
+            }
+
+            float calculatedYScale = (float) getHeight() / maxY;
+            if (lastCalculateGeneration.get() == calculateGeneration) {
+                scaleThread.setYScale(calculatedYScale, animateYScale);
+            }
+        });
+    }
+
+    private void updateGraphMatrix(float scale) {
+        yScale = scale;
         graphMatrix.reset();
         graphMatrix.setTranslate(xOffs, getHeight());
-        graphMatrix.preScale(xScale, -yScale);
+        graphMatrix.preScale(xScale, -scale);
+    }
+
+    private void invalidateOnAnimation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            postInvalidateOnAnimation();
+        } else {
+            postInvalidate();
+        }
     }
 
     // =======
-
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -272,6 +325,11 @@ public class ChartView extends View {
                 float touchX = event.getX();
                 if (touchState == TOUCH_STATE_IDLE && Math.abs(touchX - downX) > touchSlop) {
                     touchState = TOUCH_STATE_DRAG;
+
+                    ViewParent viewParent = getParent();
+                    if (viewParent != null) {
+                        viewParent.requestDisallowInterceptTouchEvent(true);
+                    }
                 }
                 if (touchState == TOUCH_STATE_DRAG) {
                     moveChart(touchX - lastTouchX);
@@ -326,28 +384,25 @@ public class ChartView extends View {
         float unscaledOffset = dx / xScale;
         float rangeOffs = unscaledOffset / uiChart.width;
 
-        float newRangeStart = rangeStart - rangeOffs;
-        float newRangeEnd = rangeEnd - rangeOffs;
+        float newRangeStart = range.getStart() - rangeOffs;
+        float newRangeEnd = range.getEnd() - rangeOffs;
 
-        updateRanges(newRangeStart, newRangeEnd);
+        updateRanges(newRangeStart, newRangeEnd, true);
+        invalidateOnAnimation();
     }
 
     private void flingChart(float xVelocity) {
         UiChart uiChart = this.uiChart;
         if (uiChart == null) return;
 
-        int startX = (int) (xScale * rangeStart * uiChart.width);
+        int startX = (int) (xScale * range.getStart() * uiChart.width);
         int minX = 0;
         int maxX = (int) (xScale * uiChart.width) - getWidth();
 
         flingScroller.forceFinished(true);
         flingScroller.fling(startX, 0, (int) -xVelocity, 0, minX, maxX, 0, 0);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            postInvalidateOnAnimation();
-        } else {
-            postInvalidate();
-        }
+        invalidateOnAnimation();
     }
 
     @Override
@@ -359,15 +414,15 @@ public class ChartView extends View {
 
             int currOffs = flingScroller.getCurrX();
             float newRangeStart = (float) currOffs / (xScale * uiChart.width);
-            float newRangeEnd = newRangeStart + (rangeEnd - rangeStart);
+            float newRangeEnd = newRangeStart + range.getSize();
 
-            updateRanges(newRangeStart, newRangeEnd);
+            updateRanges(newRangeStart, newRangeEnd, true);
+            invalidateOnAnimation();
         } else {
             touchState = TOUCH_STATE_IDLE;
-            invalidate();
+            invalidateOnAnimation();
         }
     }
-
 
     // =======
 
@@ -376,8 +431,8 @@ public class ChartView extends View {
         Parcelable superState = super.onSaveInstanceState();
         SavedState savedState = new SavedState(superState);
         savedState.hiddenGraphIds = new ArrayList<>(hiddenGraphIds);
-        savedState.rangeStart = rangeStart;
-        savedState.rangeEnd = rangeEnd;
+        savedState.rangeStart = range.getStart();
+        savedState.rangeEnd = range.getEnd();
         return savedState;
     }
 
@@ -387,7 +442,7 @@ public class ChartView extends View {
         super.onRestoreInstanceState(savedState.getSuperState());
         hiddenGraphIds.clear();
         hiddenGraphIds.addAll(savedState.hiddenGraphIds);
-        updateRanges(savedState.rangeStart, savedState.rangeEnd);
+        updateRanges(savedState.rangeStart, savedState.rangeEnd, false);
     }
 
     private static class SavedState extends BaseSavedState {
@@ -424,6 +479,55 @@ public class ChartView extends View {
                 return new SavedState[size];
             }
         };
+    }
+
+    // =======
+
+    private class ScaleThread extends Thread {
+
+        private final long interval = 10;
+
+        private volatile boolean isRunning = true;
+
+        private volatile float targetYScale;
+
+        private ScaleThread(float yScale) {
+            this.targetYScale = yScale;
+        }
+
+        private void cancel() {
+            isRunning = false;
+        }
+
+        private void setYScale(float scale, boolean withAnimation) {
+            targetYScale = scale;
+            if (!withAnimation) {
+                updateGraphMatrix(scale);
+                invalidateOnAnimation();
+            }
+        }
+
+        @Override
+        public void run() {
+            while (isRunning) {
+                float yScale = ChartView.this.yScale;
+                float targetScale = this.targetYScale;
+                if (targetScale != yScale) {
+                    float diff = targetScale - yScale;
+                    if (Math.abs(diff) < 0.00001f) {
+                        updateGraphMatrix(targetScale);
+                    } else {
+                        float offs = diff * interval / 100f;
+                        updateGraphMatrix(yScale + offs);
+                    }
+                    invalidateOnAnimation();
+                }
+                try {
+                    Thread.sleep(interval);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
     }
 
 }

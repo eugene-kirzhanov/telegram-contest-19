@@ -349,9 +349,9 @@ public class MiniChartView extends View {
             invalidate();
         });
 
-        onRangeChangeListener = chartView::setRange;
+        onRangeChangeListener = (start, end) -> chartView.setRange(start, end, true);
 
-        chartView.setRange(rangeStart, rangeEnd);
+        chartView.setRange(rangeStart, rangeEnd, false);
     }
 
     private void enqueueUpdateData(UiChart uiChart, int viewWidth, int viewHeight) {

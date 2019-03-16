@@ -43,7 +43,7 @@ public class Graph {
         }
     }
 
-    public void transformPoints(Matrix matrix) {
+    public void transform(Matrix matrix) {
         matrix.mapPoints(transformedPoints, points);
     }
 

@@ -400,7 +400,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         List<Graph> graphs = new ArrayList<>();
         for (Graph g : uiChart.graphs) {
             Graph graph = new Graph(g, chartLineWidth);
-            graph.transformPoints(matrix);
+            graph.transform(matrix);
             graphs.add(graph);
         }
         return graphs;

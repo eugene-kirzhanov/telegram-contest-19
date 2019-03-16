@@ -64,7 +64,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
     private float xOffs = 0f;
     private float xScale = 1f;
-    private volatile float yScale = 1f;
+    private volatile float yScale = 0f;
 
     private final List<Graph> graphs = new ArrayList<>();
     private float uiChartWidth;
@@ -129,6 +129,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     @Override
     public void onDraw(Canvas canvas) {
         canvas.drawRect(0f, 0f, getWidth(), getHeight(), guidelinePaint);
+
+        if (yScale == 0f) return;
 
         synchronized (graphs) {
             for (Graph graph : graphs) {
@@ -280,7 +282,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
         synchronized (graphs) {
             for (Graph graph : graphs) {
-                graph.transformPoints(graphMatrix);
+                graph.transform(graphMatrix);
             }
         }
     }

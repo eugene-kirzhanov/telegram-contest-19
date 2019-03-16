@@ -17,9 +17,9 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import by.anegin.telegram_contests.R;
+import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
@@ -27,12 +27,13 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class MiniChartView extends View {
+public class MiniChartView extends View implements ScaleAnimationHelper.Callback {
 
     private static final int DRAG_RANGE = 1;
     private static final int DRAG_RANGE_START = 2;
     private static final int DRAG_RANGE_END = 3;
     private static final int DRAG_NONE = 4;
+
 
     interface OnRangeChangeListener {
         void onRangeChanged(float start, float end);
@@ -67,6 +68,8 @@ public class MiniChartView extends View {
 
     private final Executor updateDataExecutor = Executors.newFixedThreadPool(2);
     private long lastUpdateGeneration = 0L;
+
+    private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this);
 
     private UiChart uiChart;
     private List<Graph> graphs;
@@ -408,22 +411,17 @@ public class MiniChartView extends View {
     private final Map<String, ValueAnimator> hideAnimators = new HashMap<>();
     private final Map<String, ValueAnimator> showAnimators = new HashMap<>();
 
-    private long animduration = 500;
-
     private void hideGraph(String id) {
         if (hiddenGraphIds.add(id)) invalidate();
 
         // find Graph by id
-        Graph graph = null;
-        for (Graph g : this.graphs) {
-            if (g.id.equals(id)) {
-                graph = g;
-                break;
-            }
-        }
+        Graph graph = findGraph(id);
         if (graph == null) return;
 
-        graph.state = Graph.STATE_HIDING;
+        if (graph.state != Graph.STATE_HIDING) {
+            graph.state = Graph.STATE_HIDING;
+            scaleAnimationHelper.calculate(false);
+        }
 
         // cancel show animation if exists
         ValueAnimator showAnimation = showAnimators.remove(id);
@@ -433,36 +431,10 @@ public class MiniChartView extends View {
 
         // add hide animation if not exists
         if (!hideAnimators.containsKey(id)) {
-
-            ValueAnimator hideAnimation = ValueAnimator.ofFloat(graph.animationValue, 0f);
+            ValueAnimator hideAnimation = makeToggleAnimation(graph, 0f,
+                    Graph.STATE_HIDING, Graph.STATE_HIDDEN,
+                    () -> hideAnimators.remove(id));
             hideAnimators.put(id, hideAnimation);
-
-            hideAnimation.setInterpolator(new AccelerateInterpolator());
-            hideAnimation.setDuration(animduration);
-
-            final Graph graphFinal = graph;
-
-            hideAnimation.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    hideAnimators.remove(id);
-                    if (graphFinal.state == Graph.STATE_HIDING) {
-                        graphFinal.state = Graph.STATE_HIDDEN;
-                        graphFinal.animationValue = 0f;
-                        invalidate();
-                    }
-                }
-            });
-
-            hideAnimation.addUpdateListener(animation -> {
-                if (graphFinal.state == Graph.STATE_HIDING) {
-                    graphFinal.animationValue = (float) animation.getAnimatedValue();
-                    invalidate();
-                } else {
-                    animation.cancel();
-                }
-            });
-
             hideAnimation.start();
         }
     }
@@ -470,17 +442,13 @@ public class MiniChartView extends View {
     private void showGraph(String id) {
         if (hiddenGraphIds.remove(id)) invalidate();
 
-        // find Graph by id
-        Graph graph = null;
-        for (Graph g : this.graphs) {
-            if (g.id.equals(id)) {
-                graph = g;
-                break;
-            }
-        }
+        Graph graph = findGraph(id);
         if (graph == null) return;
 
-        graph.state = Graph.STATE_SHOWING;
+        if (graph.state != Graph.STATE_SHOWING) {
+            graph.state = Graph.STATE_SHOWING;
+            scaleAnimationHelper.calculate(false);
+        }
 
         // cancel hide animation if exists
         ValueAnimator hideAnimation = hideAnimators.remove(id);
@@ -488,40 +456,46 @@ public class MiniChartView extends View {
             hideAnimation.cancel();
         }
 
-        // add hide animation if not exists
+        // add show animation if not exists
         if (!showAnimators.containsKey(id)) {
-
-            ValueAnimator showAnimation = ValueAnimator.ofFloat(graph.animationValue, 1f);
+            ValueAnimator showAnimation = makeToggleAnimation(graph, 1f,
+                    Graph.STATE_SHOWING, Graph.STATE_VISIBLE,
+                    () -> showAnimators.remove(id));
             showAnimators.put(id, showAnimation);
-
-            showAnimation.setInterpolator(new DecelerateInterpolator());
-            showAnimation.setDuration(animduration);
-
-            final Graph graphFinal = graph;
-
-            showAnimation.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    hideAnimators.remove(id);
-                    if (graphFinal.state == Graph.STATE_SHOWING) {
-                        graphFinal.state = Graph.STATE_VISIBLE;
-                        graphFinal.animationValue = 1f;
-                        invalidate();
-                    }
-                }
-            });
-
-            showAnimation.addUpdateListener(animation -> {
-                if (graphFinal.state == Graph.STATE_SHOWING) {
-                    graphFinal.animationValue = (float) animation.getAnimatedValue();
-                    invalidate();
-                } else {
-                    animation.cancel();
-                }
-            });
-
             showAnimation.start();
         }
+    }
+
+    private Graph findGraph(String id) {
+        for (Graph g : this.graphs)
+            if (g.id.equals(id)) return g;
+        return null;
+    }
+
+    private ValueAnimator makeToggleAnimation(Graph graph, float endValue, int progressState, int finalState, Runnable onEndAction) {
+        ValueAnimator anim = ValueAnimator.ofFloat(graph.animationValue, endValue);
+        anim.setInterpolator(new DecelerateInterpolator());
+        anim.setDuration(500);
+        anim.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                onEndAction.run();
+                if (graph.state == progressState) {
+                    graph.state = finalState;
+                    graph.animationValue = endValue;
+                    invalidate();
+                }
+            }
+        });
+        anim.addUpdateListener(animation -> {
+            if (graph.state == progressState) {
+                graph.animationValue = (float) animation.getAnimatedValue();
+                invalidate();
+            } else {
+                animation.cancel();
+            }
+        });
+        return anim;
     }
 
     private void showAllGraphs() {
@@ -531,6 +505,7 @@ public class MiniChartView extends View {
         for (Graph graph : graphs) {
             graph.state = Graph.STATE_VISIBLE;
             graph.animationValue = 1f;
+            scaleAnimationHelper.calculate(false);
         }
 
         for (ValueAnimator anim : hideAnimators.values()) {
@@ -543,6 +518,23 @@ public class MiniChartView extends View {
         showAnimators.clear();
 
         invalidate();
+    }
+
+    // ===============
+
+    @Override
+    public float calculateNewScale() {
+        return 0;
+    }
+
+    @Override
+    public float getCurrentScale() {
+        return 0;
+    }
+
+    @Override
+    public void onScaleUpdated(float scale) {
+
     }
 
     // ===============

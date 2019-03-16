@@ -1,6 +1,5 @@
 package by.anegin.telegram_contests.core.ui.view;
 
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -16,6 +15,7 @@ import android.util.TypedValue;
 import android.view.*;
 import android.widget.OverScroller;
 import by.anegin.telegram_contests.R;
+import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
@@ -24,16 +24,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class ChartView extends View {
+public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
     private static final int TOUCH_STATE_IDLE = 1;
     private static final int TOUCH_STATE_DRAG = 2;
     private static final int TOUCH_STATE_FLING = 3;
+
 
     public interface OnUiChartChangeListener {
         void onUiChartChanged(UiChart uiChart);
@@ -84,11 +81,7 @@ public class ChartView extends View {
 
     private final Set<String> hiddenGraphIds = new HashSet<>();
 
-    private final ExecutorService scaleCalculateExecutor = Executors.newFixedThreadPool(2);
-    private Future<?> scaleCalculationTask;
-    private final AtomicLong lastCalculateGeneration = new AtomicLong(0);
-    private ValueAnimator scaleAnimator;
-    private float scaleAnimTo;
+    private final ScaleAnimationHelper scaleAnimHelper = new ScaleAnimationHelper(this);
 
     public ChartView(Context context) {
         super(context);
@@ -130,7 +123,7 @@ public class ChartView extends View {
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        calculateScaleAndOffset(false);
+        scaleAnimHelper.calculate(false);
     }
 
     @Override
@@ -173,7 +166,7 @@ public class ChartView extends View {
 
         hiddenGraphIds.clear();
 
-        calculateScaleAndOffset(false);
+        scaleAnimHelper.calculate(false);
 
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
@@ -239,76 +232,45 @@ public class ChartView extends View {
             if (onRangeChangeListener != null) {
                 onRangeChangeListener.onRangeChangeListener(start, end);
             }
-            calculateScaleAndOffset(animateYScale);
+            scaleAnimHelper.calculate(animateYScale);
         }
     }
 
-    private void calculateScaleAndOffset(boolean animateYScale) {
-        final float uiChartWidth;
-        final List<Graph> graphs;
+    @Override
+    public float calculateNewScale() {
+        float uiChartWidth;
+        List<Graph> graphs;
         synchronized (this.graphs) {
             uiChartWidth = this.uiChartWidth;
             graphs = new ArrayList<>(this.graphs);
         }
-        if (uiChartWidth == 0f || graphs.isEmpty()) return;
+        if (uiChartWidth == 0f || graphs.isEmpty()) return yScale;
 
-        final float rangeStart = range.getStart();
-        final float rangeEnd = range.getEnd();
+        xScale = getWidth() / (uiChartWidth * range.getSize());
+        xOffs = xScale * range.getStart() * uiChartWidth;
 
-        long calculateGeneration = lastCalculateGeneration.incrementAndGet();
+        float startX = uiChartWidth * range.getStart();
+        float endX = uiChartWidth * range.getEnd();
 
-        if (scaleCalculationTask != null) {
-            scaleCalculationTask.cancel(true);
-            scaleCalculationTask = null;
+        float maxY = 0f;
+        for (Graph graph : graphs) {
+            float max = graph.findMaxYInRange(startX, endX);
+            if (max > maxY) maxY = max;
         }
-        scaleCalculationTask = scaleCalculateExecutor.submit(() -> {
 
-            xScale = getWidth() / (uiChartWidth * range.getSize());
-            xOffs = xScale * range.getStart() * uiChartWidth;
-
-            float startX = uiChartWidth * rangeStart;
-            float endX = uiChartWidth * rangeEnd;
-
-            float maxY = 0f;
-            for (Graph graph : graphs) {
-                float max = graph.findMaxYInRange(startX, endX);
-                if (max > maxY) maxY = max;
-            }
-
-            float calculatedYScale = (float) getHeight() / maxY;
-
-            if (lastCalculateGeneration.get() == calculateGeneration) {
-                if (animateYScale) {
-                    post(() -> animateYScale(yScale, calculatedYScale));
-                } else {
-                    yScale = calculatedYScale;
-                    updateGraphMatrix();
-                    invalidateOnAnimation();
-                }
-            }
-        });
+        return (float) getHeight() / maxY;
     }
 
+    @Override
+    public float getCurrentScale() {
+        return yScale;
+    }
 
-    private void animateYScale(float from, float to) {
-        if (scaleAnimator != null && scaleAnimator.isRunning()) {
-            if (scaleAnimTo != to) {
-                scaleAnimator.cancel();
-                scaleAnimator = null;
-            } else {
-                return;
-            }
-        }
-        scaleAnimTo = to;
-
-        scaleAnimator = ValueAnimator.ofFloat(from, to);
-        scaleAnimator.setDuration(250);
-        scaleAnimator.addUpdateListener(animation -> {
-            yScale = (float) animation.getAnimatedValue();
-            updateGraphMatrix();
-            invalidateOnAnimation();
-        });
-        scaleAnimator.start();
+    @Override
+    public void onScaleUpdated(float scale) {
+        yScale = scale;
+        updateGraphMatrix();
+        invalidateOnAnimation();
     }
 
     private void updateGraphMatrix() {

@@ -25,13 +25,19 @@ import by.anegin.telegram_contests.core.ui.view.ChartView;
 import by.anegin.telegram_contests.core.ui.view.MiniChartView;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity implements CompoundButton.OnCheckedChangeListener {
 
     private static final int MENUITEM_ID_FIRST = 42;
+
     private static final String STATE_CURRENT_CHART_INDEX = "current_chart_index";
+    private static final String STATE_HIDDEN_GRAPH_IDS = "hidden_graph_ids";
 
     private DataRepository dataRepository;
 
@@ -45,6 +51,8 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
     private Data data;
     private int currentChartIndex = 0;
+
+    private final Set<String> hiddenGraphIds = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +71,11 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
         if (savedInstanceState != null) {
             currentChartIndex = savedInstanceState.getInt(STATE_CURRENT_CHART_INDEX);
+
+            List<String> savedHiddenGraphIds = savedInstanceState.getStringArrayList(STATE_HIDDEN_GRAPH_IDS);
+            if (savedHiddenGraphIds != null) {
+                hiddenGraphIds.addAll(savedHiddenGraphIds);
+            }
         }
 
         layoutGraphs = findViewById(R.id.layoutGraphs);
@@ -80,6 +93,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_CURRENT_CHART_INDEX, currentChartIndex);
+        outState.putStringArrayList(STATE_HIDDEN_GRAPH_IDS, new ArrayList<>(hiddenGraphIds));
     }
 
     @Override
@@ -110,7 +124,8 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
         if (chartsCount > 0 && itemId >= MENUITEM_ID_FIRST && itemId < MENUITEM_ID_FIRST + chartsCount) {
             int index = itemId - MENUITEM_ID_FIRST;
-            showChart(index, true);
+            hiddenGraphIds.clear();
+            showChart(index);
             return true;
         } else {
             switch (itemId) {
@@ -136,10 +151,10 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
     private void onDataLoaded(Data data) {
         this.data = data;
-        showChart(currentChartIndex, false);
+        showChart(currentChartIndex);
     }
 
-    private void showChart(int index, boolean resetVisibleGraphs) {
+    private void showChart(int index) {
         currentChartIndex = index;
         showExecutor.execute(() -> {
             Data data = this.data;
@@ -149,10 +164,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
             UiChart uiChart = new UiChart(chart);
 
             runOnUiThread(() -> {
-                chartView.setUiChart(uiChart);
-                if (resetVisibleGraphs) {
-                    chartView.showAllGraphs();
-                }
+                chartView.setUiChart(uiChart, hiddenGraphIds);
                 updateGraphsList(chart);
                 invalidateOptionsMenu();
             });
@@ -172,7 +184,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
             CheckBox checkBoxGraph = itemView.findViewById(R.id.checkboxGraph);
             checkBoxGraph.setText(line.name);
             checkBoxGraph.setTag(line.id);
-            checkBoxGraph.setChecked(chartView.isGraphVisible(line.id));
+            checkBoxGraph.setChecked(!hiddenGraphIds.contains(line.id));
 
             checkBoxGraph.setOnCheckedChangeListener(this);
 
@@ -198,10 +210,15 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
         if (tag instanceof String) {
             String graphId = (String) tag;
             if (isChecked) {
-                chartView.showGraph(graphId);
+                if (hiddenGraphIds.remove(graphId)) {
+                    chartView.showGraph(graphId);
+                }
             } else {
-                if (chartView.getVisibleGraphsCount() > 1) {
-                    chartView.hideGraph(graphId);
+                int visibleGraphsCount = chartView.getGraphsCount() - hiddenGraphIds.size();
+                if (visibleGraphsCount > 1) {
+                    if (hiddenGraphIds.add(graphId)) {
+                        chartView.hideGraph(graphId);
+                    }
                 } else {
                     buttonView.setChecked(true);
                 }

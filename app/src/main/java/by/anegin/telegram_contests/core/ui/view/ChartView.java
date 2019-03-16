@@ -21,7 +21,6 @@ import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -30,7 +29,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     private static final int TOUCH_STATE_IDLE = 1;
     private static final int TOUCH_STATE_DRAG = 2;
     private static final int TOUCH_STATE_FLING = 3;
-
 
     public interface OnUiChartChangeListener {
         void onUiChartChanged(UiChart uiChart);
@@ -45,7 +43,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
         void onGraphShown(String id);
 
-        void onReset();
+        void onHiddenGraphChanged(Set<String> ids);
     }
 
     private OnUiChartChangeListener onUiChartChangeListener;
@@ -78,8 +76,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     private int touchState = TOUCH_STATE_IDLE;
     private float downX;
     private float lastTouchX;
-
-    private final Set<String> hiddenGraphIds = new HashSet<>();
 
     private final ScaleAnimationHelper scaleAnimHelper = new ScaleAnimationHelper(this, 250);
 
@@ -153,7 +149,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
         invalidateOnAnimation();
     }
 
-    public void setUiChart(UiChart uiChart) {
+    public void setUiChart(UiChart uiChart, Set<String> hiddenGraphsIds) {
         synchronized (graphs) {
             graphs.clear();
             if (uiChart != null) {
@@ -167,12 +163,14 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
             }
         }
 
-        hiddenGraphIds.clear();
-
         scaleAnimHelper.calculate(false);
 
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
+        }
+
+        if (onGraphVisibilityChangeListener != null) {
+            onGraphVisibilityChangeListener.onHiddenGraphChanged(hiddenGraphsIds);
         }
     }
 
@@ -189,39 +187,21 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     }
 
     public void hideGraph(String id) {
-        if (hiddenGraphIds.add(id)) {
-            if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onGraphHidden(id);
-            }
-            invalidate();
+        if (onGraphVisibilityChangeListener != null) {
+            onGraphVisibilityChangeListener.onGraphHidden(id);
         }
+        invalidate();
     }
 
     public void showGraph(String id) {
-        if (hiddenGraphIds.remove(id)) {
-            if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onGraphShown(id);
-            }
-            invalidate();
+        if (onGraphVisibilityChangeListener != null) {
+            onGraphVisibilityChangeListener.onGraphShown(id);
         }
+        invalidate();
     }
 
-    public int getVisibleGraphsCount() {
-        return graphs.size() - hiddenGraphIds.size();
-    }
-
-    public boolean isGraphVisible(String id) {
-        return !hiddenGraphIds.contains(id);
-    }
-
-    public void showAllGraphs() {
-        if (!hiddenGraphIds.isEmpty()) {
-            hiddenGraphIds.clear();
-            if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onReset();
-            }
-            invalidate();
-        }
+    public int getGraphsCount() {
+        return graphs.size();
     }
 
     // =======
@@ -440,7 +420,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     protected Parcelable onSaveInstanceState() {
         Parcelable superState = super.onSaveInstanceState();
         SavedState savedState = new SavedState(superState);
-        savedState.hiddenGraphIds = new ArrayList<>(hiddenGraphIds);
         savedState.rangeStart = range.getStart();
         savedState.rangeEnd = range.getEnd();
         return savedState;
@@ -450,8 +429,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
-        hiddenGraphIds.clear();
-        hiddenGraphIds.addAll(savedState.hiddenGraphIds);
         updateRanges(savedState.rangeStart, savedState.rangeEnd, false);
     }
 

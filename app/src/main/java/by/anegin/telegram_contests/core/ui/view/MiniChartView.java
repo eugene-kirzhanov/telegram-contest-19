@@ -26,10 +26,7 @@ import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class MiniChartView extends View implements ScaleAnimationHelper.Callback {
 
@@ -370,8 +367,8 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
             }
 
             @Override
-            public void onReset() {
-                showAllGraphs();
+            public void onHiddenGraphChanged(Set<String> ids) {
+                updateHiddenGraphs(ids);
             }
         });
 
@@ -486,11 +483,16 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         return anim;
     }
 
-    private void showAllGraphs() {
+    private void updateHiddenGraphs(Set<String> ids) {
         List<Graph> graphs = this.graphs;
         for (Graph graph : graphs) {
-            graph.state = Graph.STATE_VISIBLE;
-            graph.alpha = 1f;
+            if (ids.contains(graph.id)) {
+                graph.state = Graph.STATE_HIDDEN;
+                graph.alpha = 0f;
+            } else {
+                graph.state = Graph.STATE_VISIBLE;
+                graph.alpha = 1f;
+            }
             scaleAnimationHelper.calculate(false);
         }
 

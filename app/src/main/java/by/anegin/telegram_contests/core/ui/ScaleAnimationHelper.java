@@ -3,6 +3,7 @@ package by.anegin.telegram_contests.core.ui;
 import android.animation.ValueAnimator;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.animation.LinearInterpolator;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,6 +21,7 @@ public class ScaleAnimationHelper {
     }
 
     private final Callback callback;
+    private final long animateDuration;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
@@ -30,8 +32,9 @@ public class ScaleAnimationHelper {
     private ValueAnimator scaleAnimator;
     private float scaleAnimTo;
 
-    public ScaleAnimationHelper(Callback callback) {
+    public ScaleAnimationHelper(Callback callback, long animateDuration) {
         this.callback = callback;
+        this.animateDuration = animateDuration;
     }
 
     public void calculate(boolean animateYScale) {
@@ -68,7 +71,8 @@ public class ScaleAnimationHelper {
         scaleAnimTo = to;
 
         scaleAnimator = ValueAnimator.ofFloat(from, to);
-        scaleAnimator.setDuration(250);
+        scaleAnimator.setInterpolator(new LinearInterpolator());
+        scaleAnimator.setDuration(animateDuration);
         scaleAnimator.addUpdateListener(animation -> {
             float scale = (float) animation.getAnimatedValue();
             callback.onScaleUpdated(scale);

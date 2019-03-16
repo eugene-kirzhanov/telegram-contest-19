@@ -81,7 +81,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
     private final Set<String> hiddenGraphIds = new HashSet<>();
 
-    private final ScaleAnimationHelper scaleAnimHelper = new ScaleAnimationHelper(this);
+    private final ScaleAnimationHelper scaleAnimHelper = new ScaleAnimationHelper(this, 250);
 
     public ChartView(Context context) {
         super(context);
@@ -163,6 +163,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
                 }
             } else {
                 uiChartWidth = 0f;
+                yScale = 0f;
             }
         }
 
@@ -203,6 +204,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
             }
             invalidate();
         }
+    }
+
+    public int getVisibleGraphsCount() {
+        return graphs.size() - hiddenGraphIds.size();
     }
 
     public boolean isGraphVisible(String id) {

@@ -11,13 +11,11 @@ public class UiChart {
 
     public final List<Graph> graphs;
     public final long width;
-    public final long height;
 
     public UiChart(Chart chart) {
         if (chart.x.values.length == 0 || chart.lines.isEmpty()) {
             graphs = new ArrayList<>();
             width = 0;
-            height = 0;
             return;
         }
 
@@ -48,7 +46,6 @@ public class UiChart {
         }
 
         width = minMaxX[1] - minMaxX[0];
-        height = maxY - minY;
     }
 
     private long[] findMinMax(long[] values) {

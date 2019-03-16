@@ -14,18 +14,23 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewParent;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
-import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MiniChartView extends View implements ScaleAnimationHelper.Callback {
 
@@ -34,10 +39,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     private static final int DRAG_RANGE_END = 3;
     private static final int DRAG_NONE = 4;
 
-
-    interface OnRangeChangeListener {
-        void onRangeChanged(float start, float end);
-    }
+    private static final int TOGGLE_ANIMATION_DURATION = 200;
 
     private final Paint windowPaint = new Paint();
     private final Paint touchRipplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -64,17 +66,21 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     private float touchRippleRadius = 0f;
     private float touchRippleAlpha = 0f;
 
-    private OnRangeChangeListener onRangeChangeListener;
+    private ChartView attachedChartView;
 
-    private final Executor updateDataExecutor = Executors.newFixedThreadPool(2);
-    private long lastUpdateGeneration = 0L;
-
-    private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this);
+    private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
 
     private UiChart uiChart;
     private List<Graph> graphs;
 
-    private final Set<String> hiddenGraphIds = new HashSet<>();
+    private final Map<String, ValueAnimator> hideAnimators = new HashMap<>();
+    private final Map<String, ValueAnimator> showAnimators = new HashMap<>();
+
+    private final Matrix transformMatrix = new Matrix();
+    private float xOffs;
+    private float yOffs;
+    private float xScale;
+    private float yScale;
 
     public MiniChartView(Context context) {
         super(context);
@@ -148,10 +154,14 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         // draw Chart data
         List<Graph> graphs = this.graphs;
         if (graphs != null) {
+            canvas.save();
+            canvas.clipRect(0f, 0f, width, height);
             for (Graph graph : graphs) {
-                if (graph.state == Graph.STATE_HIDDEN) continue;
-                graph.draw(canvas);
+                if (graph.state != Graph.STATE_HIDDEN) {
+                    graph.draw(canvas);
+                }
             }
+            canvas.restore();
         }
 
         // fade out off-window regions
@@ -217,6 +227,11 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
                 float touchX = event.getX();
                 if (!inDragMode && Math.abs(touchX - downX) > touchSlop) {
                     inDragMode = true;
+
+                    ViewParent viewParent = getParent();
+                    if (viewParent != null) {
+                        viewParent.requestDisallowInterceptTouchEvent(true);
+                    }
                 }
                 if (inDragMode && dragMode != DRAG_NONE) {
                     onMove(touchX, lastTouchX - touchX);
@@ -287,8 +302,8 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
 
             invalidate();
 
-            if (notifyListener && onRangeChangeListener != null) {
-                onRangeChangeListener.onRangeChanged(start, end);
+            if (notifyListener && attachedChartView != null) {
+                attachedChartView.setRange(start, end, true);
             }
         }
     }
@@ -335,6 +350,8 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     }
 
     public void attachToChartView(ChartView chartView) {
+        this.attachedChartView = chartView;
+
         chartView.setOnUiChartChangeListener(uiChart -> {
             this.uiChart = uiChart;
             enqueueUpdateData();
@@ -359,68 +376,37 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
             }
         });
 
-        onRangeChangeListener = (start, end) -> chartView.setRange(start, end, true);
-
         chartView.setRange(rangeStart, rangeEnd, false);
     }
 
     private void enqueueUpdateData() {
         UiChart uiChart = this.uiChart;
-        int viewWidth = getWidth();
-        int viewHeight = getHeight();
-        if (uiChart == null || viewWidth == 0 || viewHeight == 0) return;
-        long updateGeneration = ++lastUpdateGeneration;
-        updateDataExecutor.execute(() -> {
-            final List<Graph> newGraphs = updateData(uiChart, viewWidth, viewHeight);
-            if (lastUpdateGeneration == updateGeneration) {
-                post(() -> {
-                    this.graphs = newGraphs;
-                    invalidate();
-                });
-            }
-        });
-    }
+        if (uiChart == null) return;
 
-    private List<Graph> updateData(UiChart uiChart, int viewWidth, int viewHeight) {
-        if (uiChart == null) return null;
+        float viewWidth = getWidth();
+        xScale = 1f * viewWidth / uiChart.width;
+        xOffs = (viewWidth - uiChart.width * xScale) / 2f;
+        yOffs = getHeight() * 0.925f;
 
-        float scaleX = 1f * viewWidth / uiChart.width;
-        float scaleY = 0.85f * viewHeight / uiChart.height;
-
-        float scaledChartWidth = uiChart.width * scaleX;
-        float scaledChartHeight = uiChart.height * scaleY;
-
-        float xOffs = (viewWidth - scaledChartWidth) / 2f;
-        float yOffs = viewHeight - (viewHeight - scaledChartHeight) / 2f;
-
-        Matrix matrix = new Matrix();
-        matrix.setTranslate(xOffs, yOffs);
-        matrix.preScale(scaleX, -scaleY);
-
-        List<Graph> graphs = new ArrayList<>();
+        List<Graph> newGraphs = new ArrayList<>();
         for (Graph g : uiChart.graphs) {
-            Graph graph = new Graph(g, chartLineWidth);
-            graph.transform(matrix);
-            graphs.add(graph);
+            newGraphs.add(new Graph(g, chartLineWidth));
         }
-        return graphs;
+
+        this.graphs = newGraphs;
+
+        scaleAnimationHelper.calculate(false);
     }
 
     // ===============
 
-    private final Map<String, ValueAnimator> hideAnimators = new HashMap<>();
-    private final Map<String, ValueAnimator> showAnimators = new HashMap<>();
-
     private void hideGraph(String id) {
-        if (hiddenGraphIds.add(id)) invalidate();
-
-        // find Graph by id
         Graph graph = findGraph(id);
         if (graph == null) return;
 
         if (graph.state != Graph.STATE_HIDING) {
             graph.state = Graph.STATE_HIDING;
-            scaleAnimationHelper.calculate(false);
+            scaleAnimationHelper.calculate(true);
         }
 
         // cancel show animation if exists
@@ -433,6 +419,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         if (!hideAnimators.containsKey(id)) {
             ValueAnimator hideAnimation = makeToggleAnimation(graph, 0f,
                     Graph.STATE_HIDING, Graph.STATE_HIDDEN,
+                    new DecelerateInterpolator(),
                     () -> hideAnimators.remove(id));
             hideAnimators.put(id, hideAnimation);
             hideAnimation.start();
@@ -440,14 +427,12 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     }
 
     private void showGraph(String id) {
-        if (hiddenGraphIds.remove(id)) invalidate();
-
         Graph graph = findGraph(id);
         if (graph == null) return;
 
         if (graph.state != Graph.STATE_SHOWING) {
             graph.state = Graph.STATE_SHOWING;
-            scaleAnimationHelper.calculate(false);
+            scaleAnimationHelper.calculate(true);
         }
 
         // cancel hide animation if exists
@@ -460,6 +445,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         if (!showAnimators.containsKey(id)) {
             ValueAnimator showAnimation = makeToggleAnimation(graph, 1f,
                     Graph.STATE_SHOWING, Graph.STATE_VISIBLE,
+                    new AccelerateInterpolator(),
                     () -> showAnimators.remove(id));
             showAnimators.put(id, showAnimation);
             showAnimation.start();
@@ -472,24 +458,29 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         return null;
     }
 
-    private ValueAnimator makeToggleAnimation(Graph graph, float endValue, int progressState, int finalState, Runnable onEndAction) {
-        ValueAnimator anim = ValueAnimator.ofFloat(graph.animationValue, endValue);
-        anim.setInterpolator(new DecelerateInterpolator());
-        anim.setDuration(500);
+    private ValueAnimator makeToggleAnimation(Graph graph, float endValue, int progressState, int finalState, Interpolator interpolator, Runnable onEndAction) {
+        float startValue = graph.animationValue;
+        long duration = (long) (TOGGLE_ANIMATION_DURATION * Math.abs(endValue - startValue));
+
+        ValueAnimator anim = ValueAnimator.ofFloat(startValue, endValue);
+        anim.setInterpolator(interpolator);
+        anim.setDuration(duration);
         anim.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 onEndAction.run();
                 if (graph.state == progressState) {
                     graph.state = finalState;
-                    graph.animationValue = endValue;
+//                    graph.animationValue = endValue;
                     invalidate();
                 }
             }
         });
         anim.addUpdateListener(animation -> {
             if (graph.state == progressState) {
-                graph.animationValue = (float) animation.getAnimatedValue();
+                float value = (float) animation.getAnimatedValue();
+                graph.animationValue = value;
+                Log.v("ABC", "value: " + value);
                 invalidate();
             } else {
                 animation.cancel();
@@ -499,8 +490,6 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     }
 
     private void showAllGraphs() {
-        hiddenGraphIds.clear();
-
         List<Graph> graphs = this.graphs;
         for (Graph graph : graphs) {
             graph.state = Graph.STATE_VISIBLE;
@@ -524,17 +513,32 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
 
     @Override
     public float calculateNewScale() {
-        return 0;
+        float maxHeight = 0f;
+        for (Graph graph : graphs) {
+            float max = graph.findMaxYInRange(0f, uiChart.width);
+            if (max > maxHeight) maxHeight = max;
+        }
+        return 0.85f * getHeight() / maxHeight;
     }
 
     @Override
     public float getCurrentScale() {
-        return 0;
+        return yScale;
     }
 
     @Override
     public void onScaleUpdated(float scale) {
+        yScale = scale;
 
+        transformMatrix.reset();
+        transformMatrix.setTranslate(xOffs, yOffs);
+        transformMatrix.preScale(xScale, -yScale);
+
+        for (Graph graph : this.graphs) {
+            graph.transform(transformMatrix);
+        }
+
+        postInvalidate();
     }
 
     // ===============
@@ -543,7 +547,6 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     protected Parcelable onSaveInstanceState() {
         Parcelable superState = super.onSaveInstanceState();
         SavedState savedState = new SavedState(superState);
-        savedState.hiddenGraphIds = new ArrayList<>(hiddenGraphIds);
         savedState.rangeStart = rangeStart;
         savedState.rangeEnd = rangeEnd;
         return savedState;
@@ -553,15 +556,12 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
-        hiddenGraphIds.clear();
-        hiddenGraphIds.addAll(savedState.hiddenGraphIds);
         rangeStart = savedState.rangeStart;
         rangeEnd = savedState.rangeEnd;
     }
 
     private static class SavedState extends BaseSavedState {
 
-        List<String> hiddenGraphIds;
         float rangeStart;
         float rangeEnd;
 
@@ -571,7 +571,6 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
 
         private SavedState(Parcel in) {
             super(in);
-            hiddenGraphIds = in.createStringArrayList();
             rangeStart = in.readFloat();
             rangeEnd = in.readFloat();
         }
@@ -579,7 +578,6 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         @Override
         public void writeToParcel(Parcel out, int flags) {
             super.writeToParcel(out, flags);
-            out.writeStringList(hiddenGraphIds);
             out.writeFloat(rangeStart);
             out.writeFloat(rangeEnd);
         }

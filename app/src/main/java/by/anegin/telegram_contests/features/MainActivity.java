@@ -200,7 +200,11 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
             if (isChecked) {
                 chartView.showGraph(graphId);
             } else {
-                chartView.hideGraph(graphId);
+                if (chartView.getVisibleGraphsCount() > 1) {
+                    chartView.hideGraph(graphId);
+                } else {
+                    buttonView.setChecked(true);
+                }
             }
         }
     }

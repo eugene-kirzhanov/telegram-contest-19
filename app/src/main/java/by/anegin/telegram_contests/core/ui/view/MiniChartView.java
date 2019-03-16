@@ -1,7 +1,6 @@
 package by.anegin.telegram_contests.core.ui.view;
 
 import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -18,17 +17,16 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewParent;
-import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.Interpolator;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
+import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
 import java.util.*;
 
-public class MiniChartView extends View implements ScaleAnimationHelper.Callback {
+public class MiniChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
 
     private static final int DRAG_RANGE = 1;
     private static final int DRAG_RANGE_START = 2;
@@ -65,6 +63,8 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     private ChartView attachedChartView;
 
     private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
+
+    private final ToggleAnimationHelper toggleAnimationHelper = new ToggleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
 
     private UiChart uiChart;
     private List<Graph> graphs;
@@ -358,12 +358,12 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         chartView.setOnGraphVisibilityChangeListener(new ChartView.OnGraphVisibilityChangeListener() {
             @Override
             public void onGraphHidden(String id) {
-                hideGraph(id);
+                toggleAnimationHelper.hideGraph(id);
             }
 
             @Override
             public void onGraphShown(String id) {
-                showGraph(id);
+                toggleAnimationHelper.showGraph(id);
             }
 
             @Override
@@ -396,91 +396,21 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
 
     // ===============
 
-    private void hideGraph(String id) {
-        Graph graph = findGraph(id);
-        if (graph == null) return;
-
-        if (graph.state != Graph.STATE_HIDING) {
-            graph.state = Graph.STATE_HIDING;
-            scaleAnimationHelper.calculate(true);
-        }
-
-        // cancel show animation if exists
-        ValueAnimator showAnimation = showAnimators.remove(id);
-        if (showAnimation != null && showAnimation.isRunning()) {
-            showAnimation.cancel();
-        }
-
-        // add hide animation if not exists
-        if (!hideAnimators.containsKey(id)) {
-            ValueAnimator hideAnimation = makeToggleAnimation(graph, 0f,
-                    Graph.STATE_HIDING, Graph.STATE_HIDDEN,
-                    new DecelerateInterpolator(),
-                    () -> hideAnimators.remove(id));
-            hideAnimators.put(id, hideAnimation);
-            hideAnimation.start();
-        }
-    }
-
-    private void showGraph(String id) {
-        Graph graph = findGraph(id);
-        if (graph == null) return;
-
-        if (graph.state != Graph.STATE_SHOWING) {
-            graph.state = Graph.STATE_SHOWING;
-            scaleAnimationHelper.calculate(true);
-        }
-
-        // cancel hide animation if exists
-        ValueAnimator hideAnimation = hideAnimators.remove(id);
-        if (hideAnimation != null && hideAnimation.isRunning()) {
-            hideAnimation.cancel();
-        }
-
-        // add show animation if not exists
-        if (!showAnimators.containsKey(id)) {
-            ValueAnimator showAnimation = makeToggleAnimation(graph, 1f,
-                    Graph.STATE_SHOWING, Graph.STATE_VISIBLE,
-                    new AccelerateInterpolator(),
-                    () -> showAnimators.remove(id));
-            showAnimators.put(id, showAnimation);
-            showAnimation.start();
-        }
-    }
-
-    private Graph findGraph(String id) {
+    @Override
+    public Graph getGraph(String id) {
         for (Graph g : this.graphs)
             if (g.id.equals(id)) return g;
         return null;
     }
 
-    private ValueAnimator makeToggleAnimation(Graph graph, float endValue, int progressState, int finalState, Interpolator interpolator, Runnable onEndAction) {
-        float startValue = graph.alpha;
-        long duration = (long) (TOGGLE_ANIMATION_DURATION * Math.abs(endValue - startValue));
+    @Override
+    public void onGraphToggled() {
+        scaleAnimationHelper.calculate(true);
+    }
 
-        ValueAnimator anim = ValueAnimator.ofFloat(startValue, endValue);
-        anim.setInterpolator(interpolator);
-        anim.setDuration(duration);
-        anim.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                onEndAction.run();
-                if (graph.state == progressState) {
-                    graph.state = finalState;
-                    graph.alpha = endValue;
-                    invalidate();
-                }
-            }
-        });
-        anim.addUpdateListener(animation -> {
-            if (graph.state == progressState) {
-                graph.alpha = (float) animation.getAnimatedValue();
-                invalidate();
-            } else {
-                animation.cancel();
-            }
-        });
-        return anim;
+    @Override
+    public void onGraphUpdated() {
+        invalidate();
     }
 
     private void updateHiddenGraphs(Set<String> ids) {
@@ -558,6 +488,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         rangeStart = savedState.rangeStart;
         rangeEnd = savedState.rangeEnd;
     }
+
 
     private static class SavedState extends BaseSavedState {
 

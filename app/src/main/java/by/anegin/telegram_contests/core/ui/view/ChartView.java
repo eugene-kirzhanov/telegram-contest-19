@@ -16,6 +16,7 @@ import android.view.*;
 import android.widget.OverScroller;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
+import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
@@ -24,11 +25,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class ChartView extends View implements ScaleAnimationHelper.Callback {
+public class ChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
 
     private static final int TOUCH_STATE_IDLE = 1;
     private static final int TOUCH_STATE_DRAG = 2;
     private static final int TOUCH_STATE_FLING = 3;
+
+    private static final int AUTOSCALE_ANIMATION_DURATION = 250;
+    private static final int TOGGLE_ANIMATION_DURATION = 200;
+
 
     public interface OnUiChartChangeListener {
         void onUiChartChanged(UiChart uiChart);
@@ -77,7 +82,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
     private float downX;
     private float lastTouchX;
 
-    private final ScaleAnimationHelper scaleAnimHelper = new ScaleAnimationHelper(this, 250);
+    private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this, AUTOSCALE_ANIMATION_DURATION);
+
+    private final ToggleAnimationHelper toggleAnimationHelper = new ToggleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
 
     public ChartView(Context context) {
         super(context);
@@ -119,7 +126,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        scaleAnimHelper.calculate(false);
+        scaleAnimationHelper.calculate(false);
     }
 
     @Override
@@ -154,8 +161,16 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
             graphs.clear();
             if (uiChart != null) {
                 uiChartWidth = uiChart.width;
-                for (Graph graph : uiChart.graphs) {
-                    graphs.add(new Graph(graph, graphStrokeWidth));
+                for (Graph g : uiChart.graphs) {
+                    Graph graph = new Graph(g, graphStrokeWidth);
+                    if (hiddenGraphsIds.contains(graph.id)) {
+                        graph.state = Graph.STATE_HIDDEN;
+                        graph.alpha = 0f;
+                    } else {
+                        graph.state = Graph.STATE_VISIBLE;
+                        graph.alpha = 1f;
+                    }
+                    graphs.add(graph);
                 }
             } else {
                 uiChartWidth = 0f;
@@ -163,7 +178,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
             }
         }
 
-        scaleAnimHelper.calculate(false);
+        scaleAnimationHelper.calculate(false);
 
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
@@ -190,14 +205,14 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
         if (onGraphVisibilityChangeListener != null) {
             onGraphVisibilityChangeListener.onGraphHidden(id);
         }
-        invalidate();
+        toggleAnimationHelper.hideGraph(id);
     }
 
     public void showGraph(String id) {
         if (onGraphVisibilityChangeListener != null) {
             onGraphVisibilityChangeListener.onGraphShown(id);
         }
-        invalidate();
+        toggleAnimationHelper.showGraph(id);
     }
 
     public int getGraphsCount() {
@@ -219,7 +234,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
             if (onRangeChangeListener != null) {
                 onRangeChangeListener.onRangeChangeListener(start, end);
             }
-            scaleAnimHelper.calculate(animateYScale);
+            scaleAnimationHelper.calculate(animateYScale);
         }
     }
 
@@ -278,6 +293,27 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback {
         } else {
             postInvalidate();
         }
+    }
+
+    // =======
+
+    @Override
+    public Graph getGraph(String id) {
+        synchronized (graphs) {
+            for (Graph g : this.graphs)
+                if (g.id.equals(id)) return g;
+        }
+        return null;
+    }
+
+    @Override
+    public void onGraphToggled() {
+        scaleAnimationHelper.calculate(true);
+    }
+
+    @Override
+    public void onGraphUpdated() {
+        invalidateOnAnimation();
     }
 
     // =======

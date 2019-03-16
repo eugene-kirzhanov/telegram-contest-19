@@ -6,19 +6,20 @@ import android.graphics.Paint;
 
 public class Graph {
 
-    private static final int STATE_VISIBLE = 1;
-    private static final int STATE_HIDDEN = 2;
-    private static final int STATE_SHOWING = 3;
-    private static final int STATE_HIDING = 4;
+    public static final int STATE_VISIBLE = 1;
+    public static final int STATE_HIDDEN = 2;
+    public static final int STATE_SHOWING = 3;
+    public static final int STATE_HIDING = 4;
 
-    private final String id;
+    public final String id;
 
     private final float[] points;     // x0, y0, x1, y1, x1, y1, x2, y2, ...
     private final float[] transformedPoints;
 
-    private int state = STATE_VISIBLE;
-
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+
+    public volatile int state = STATE_VISIBLE;
+    public volatile float animationValue = 1f;
 
     // copy constructor
     public Graph(Graph graph, float strokeWidth) {
@@ -36,7 +37,8 @@ public class Graph {
     }
 
     public void draw(Canvas canvas) {
-        if (transformedPoints.length > 3 && state == STATE_VISIBLE) {
+        if (transformedPoints.length > 3) {
+            paint.setAlpha((int) (animationValue * 255));
             canvas.drawLines(transformedPoints, paint);
         }
     }
@@ -46,7 +48,7 @@ public class Graph {
     }
 
     public float findMaxYInRange(float startX, float endX) {
-        if (state == STATE_HIDDEN || state == STATE_SHOWING) return 0f;
+        if (state == STATE_HIDDEN || state == STATE_HIDING) return 0f;
         float maxY = 0f;
         int i = 0;
         while (i + 3 < points.length) {

@@ -13,12 +13,6 @@ public class UiChart {
     public final long width;
     public final long height;
 
-    public UiChart(long width, long height) {
-        this.width = width;
-        this.height = height;
-        this.graphs = new ArrayList<>();
-    }
-
     public UiChart(Chart chart) {
         if (chart.x.values.length == 0 || chart.lines.isEmpty()) {
             graphs = new ArrayList<>();

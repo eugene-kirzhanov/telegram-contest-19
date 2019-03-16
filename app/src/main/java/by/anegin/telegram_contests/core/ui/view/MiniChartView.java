@@ -1,6 +1,7 @@
 package by.anegin.telegram_contests.core.ui.view;
 
 import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -16,15 +17,13 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -147,6 +146,7 @@ public class MiniChartView extends View {
         List<Graph> graphs = this.graphs;
         if (graphs != null) {
             for (Graph graph : graphs) {
+                if (graph.state == Graph.STATE_HIDDEN) continue;
                 graph.draw(canvas);
             }
         }
@@ -332,17 +332,28 @@ public class MiniChartView extends View {
     }
 
     public void attachToChartView(ChartView chartView) {
-        chartView.setOnUiChartChangeListener((uiChart) -> {
+        chartView.setOnUiChartChangeListener(uiChart -> {
             this.uiChart = uiChart;
             enqueueUpdateData();
         });
 
         chartView.setOnRangeChangeListener((start, end) -> updateRanges(start, end, false));
 
-        chartView.setOnGraphVisibilityChangeListener(hiddenGraphIds -> {
-            this.hiddenGraphIds.clear();
-            this.hiddenGraphIds.addAll(hiddenGraphIds);
-            invalidate();
+        chartView.setOnGraphVisibilityChangeListener(new ChartView.OnGraphVisibilityChangeListener() {
+            @Override
+            public void onGraphHidden(String id) {
+                hideGraph(id);
+            }
+
+            @Override
+            public void onGraphShown(String id) {
+                showGraph(id);
+            }
+
+            @Override
+            public void onReset() {
+                showAllGraphs();
+            }
         });
 
         onRangeChangeListener = (start, end) -> chartView.setRange(start, end, true);
@@ -390,6 +401,148 @@ public class MiniChartView extends View {
             graphs.add(graph);
         }
         return graphs;
+    }
+
+    // ===============
+
+    private final Map<String, ValueAnimator> hideAnimators = new HashMap<>();
+    private final Map<String, ValueAnimator> showAnimators = new HashMap<>();
+
+    private long animduration = 500;
+
+    private void hideGraph(String id) {
+        if (hiddenGraphIds.add(id)) invalidate();
+
+        // find Graph by id
+        Graph graph = null;
+        for (Graph g : this.graphs) {
+            if (g.id.equals(id)) {
+                graph = g;
+                break;
+            }
+        }
+        if (graph == null) return;
+
+        graph.state = Graph.STATE_HIDING;
+
+        // cancel show animation if exists
+        ValueAnimator showAnimation = showAnimators.remove(id);
+        if (showAnimation != null && showAnimation.isRunning()) {
+            showAnimation.cancel();
+        }
+
+        // add hide animation if not exists
+        if (!hideAnimators.containsKey(id)) {
+
+            ValueAnimator hideAnimation = ValueAnimator.ofFloat(graph.animationValue, 0f);
+            hideAnimators.put(id, hideAnimation);
+
+            hideAnimation.setInterpolator(new AccelerateInterpolator());
+            hideAnimation.setDuration(animduration);
+
+            final Graph graphFinal = graph;
+
+            hideAnimation.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    hideAnimators.remove(id);
+                    if (graphFinal.state == Graph.STATE_HIDING) {
+                        graphFinal.state = Graph.STATE_HIDDEN;
+                        graphFinal.animationValue = 0f;
+                        invalidate();
+                    }
+                }
+            });
+
+            hideAnimation.addUpdateListener(animation -> {
+                if (graphFinal.state == Graph.STATE_HIDING) {
+                    graphFinal.animationValue = (float) animation.getAnimatedValue();
+                    invalidate();
+                } else {
+                    animation.cancel();
+                }
+            });
+
+            hideAnimation.start();
+        }
+    }
+
+    private void showGraph(String id) {
+        if (hiddenGraphIds.remove(id)) invalidate();
+
+        // find Graph by id
+        Graph graph = null;
+        for (Graph g : this.graphs) {
+            if (g.id.equals(id)) {
+                graph = g;
+                break;
+            }
+        }
+        if (graph == null) return;
+
+        graph.state = Graph.STATE_SHOWING;
+
+        // cancel hide animation if exists
+        ValueAnimator hideAnimation = hideAnimators.remove(id);
+        if (hideAnimation != null && hideAnimation.isRunning()) {
+            hideAnimation.cancel();
+        }
+
+        // add hide animation if not exists
+        if (!showAnimators.containsKey(id)) {
+
+            ValueAnimator showAnimation = ValueAnimator.ofFloat(graph.animationValue, 1f);
+            showAnimators.put(id, showAnimation);
+
+            showAnimation.setInterpolator(new DecelerateInterpolator());
+            showAnimation.setDuration(animduration);
+
+            final Graph graphFinal = graph;
+
+            showAnimation.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    hideAnimators.remove(id);
+                    if (graphFinal.state == Graph.STATE_SHOWING) {
+                        graphFinal.state = Graph.STATE_VISIBLE;
+                        graphFinal.animationValue = 1f;
+                        invalidate();
+                    }
+                }
+            });
+
+            showAnimation.addUpdateListener(animation -> {
+                if (graphFinal.state == Graph.STATE_SHOWING) {
+                    graphFinal.animationValue = (float) animation.getAnimatedValue();
+                    invalidate();
+                } else {
+                    animation.cancel();
+                }
+            });
+
+            showAnimation.start();
+        }
+    }
+
+    private void showAllGraphs() {
+        hiddenGraphIds.clear();
+
+        List<Graph> graphs = this.graphs;
+        for (Graph graph : graphs) {
+            graph.state = Graph.STATE_VISIBLE;
+            graph.animationValue = 1f;
+        }
+
+        for (ValueAnimator anim : hideAnimators.values()) {
+            if (anim.isRunning()) anim.cancel();
+        }
+        hideAnimators.clear();
+        for (ValueAnimator anim : showAnimators.values()) {
+            if (anim.isRunning()) anim.cancel();
+        }
+        showAnimators.clear();
+
+        invalidate();
     }
 
     // ===============

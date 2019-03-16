@@ -44,7 +44,11 @@ public class ChartView extends View {
     }
 
     public interface OnGraphVisibilityChangeListener {
-        void onGraphVisibilityChanged(Set<String> hiddenGraphIds);
+        void onGraphHidden(String id);
+
+        void onGraphShown(String id);
+
+        void onReset();
     }
 
     private OnUiChartChangeListener onUiChartChangeListener;
@@ -80,9 +84,11 @@ public class ChartView extends View {
 
     private final Set<String> hiddenGraphIds = new HashSet<>();
 
-    private final ExecutorService yScaleCalculateExecutor = Executors.newFixedThreadPool(2);
-    private Future<?> yScaleCalculationTask;
+    private final ExecutorService scaleCalculateExecutor = Executors.newFixedThreadPool(2);
+    private Future<?> scaleCalculationTask;
     private final AtomicLong lastCalculateGeneration = new AtomicLong(0);
+    private ValueAnimator scaleAnimator;
+    private float scaleAnimTo;
 
     public ChartView(Context context) {
         super(context);
@@ -165,6 +171,8 @@ public class ChartView extends View {
             }
         }
 
+        hiddenGraphIds.clear();
+
         calculateScaleAndOffset(false);
 
         if (onUiChartChangeListener != null) {
@@ -187,7 +195,7 @@ public class ChartView extends View {
     public void hideGraph(String id) {
         if (hiddenGraphIds.add(id)) {
             if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+                onGraphVisibilityChangeListener.onGraphHidden(id);
             }
             invalidate();
         }
@@ -196,7 +204,7 @@ public class ChartView extends View {
     public void showGraph(String id) {
         if (hiddenGraphIds.remove(id)) {
             if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+                onGraphVisibilityChangeListener.onGraphShown(id);
             }
             invalidate();
         }
@@ -207,10 +215,10 @@ public class ChartView extends View {
     }
 
     public void showAllGraphs() {
-        if (hiddenGraphIds.size() > 0) {
+        if (!hiddenGraphIds.isEmpty()) {
             hiddenGraphIds.clear();
             if (onGraphVisibilityChangeListener != null) {
-                onGraphVisibilityChangeListener.onGraphVisibilityChanged(hiddenGraphIds);
+                onGraphVisibilityChangeListener.onReset();
             }
             invalidate();
         }
@@ -249,11 +257,11 @@ public class ChartView extends View {
 
         long calculateGeneration = lastCalculateGeneration.incrementAndGet();
 
-        if (yScaleCalculationTask != null) {
-            yScaleCalculationTask.cancel(true);
-            yScaleCalculationTask = null;
+        if (scaleCalculationTask != null) {
+            scaleCalculationTask.cancel(true);
+            scaleCalculationTask = null;
         }
-        yScaleCalculationTask = yScaleCalculateExecutor.submit(() -> {
+        scaleCalculationTask = scaleCalculateExecutor.submit(() -> {
 
             xScale = getWidth() / (uiChartWidth * range.getSize());
             xOffs = xScale * range.getStart() * uiChartWidth;
@@ -271,7 +279,7 @@ public class ChartView extends View {
 
             if (lastCalculateGeneration.get() == calculateGeneration) {
                 if (animateYScale) {
-                    animateYScale(calculatedYScale);
+                    post(() -> animateYScale(yScale, calculatedYScale));
                 } else {
                     yScale = calculatedYScale;
                     updateGraphMatrix();
@@ -279,28 +287,28 @@ public class ChartView extends View {
                 }
             }
         });
-
-        invalidate();
     }
 
-    private ValueAnimator scaleAnimator;
 
-    private void animateYScale(float targetScale) {
-        if (scaleAnimator != null) {
-            if (scaleAnimator.isRunning()) {
+    private void animateYScale(float from, float to) {
+        if (scaleAnimator != null && scaleAnimator.isRunning()) {
+            if (scaleAnimTo != to) {
                 scaleAnimator.cancel();
+                scaleAnimator = null;
+            } else {
+                return;
             }
-            scaleAnimator = null;
         }
-        ValueAnimator anim = ValueAnimator.ofFloat(yScale, targetScale);
-        anim.setDuration(250);
-        anim.addUpdateListener(animation -> {
+        scaleAnimTo = to;
+
+        scaleAnimator = ValueAnimator.ofFloat(from, to);
+        scaleAnimator.setDuration(250);
+        scaleAnimator.addUpdateListener(animation -> {
             yScale = (float) animation.getAnimatedValue();
             updateGraphMatrix();
             invalidateOnAnimation();
         });
-        scaleAnimator = anim;
-        post(anim::start);
+        scaleAnimator.start();
     }
 
     private void updateGraphMatrix() {
@@ -432,9 +440,11 @@ public class ChartView extends View {
     @Override
     public void computeScroll() {
         if (touchState != TOUCH_STATE_FLING) return;
+
+        float uiChartWidth = this.uiChartWidth;
+        if (uiChartWidth == 0f) return;
+
         if (flingScroller.computeScrollOffset()) {
-            float uiChartWidth = this.uiChartWidth;
-            if (uiChartWidth == 0f) return;
 
             int currOffs = flingScroller.getCurrX();
             float newRangeStart = (float) currOffs / (xScale * uiChartWidth);
@@ -444,6 +454,13 @@ public class ChartView extends View {
             invalidateOnAnimation();
         } else {
             touchState = TOUCH_STATE_IDLE;
+
+            int currOffs = flingScroller.getFinalX();
+            float newRangeStart = (float) currOffs / (xScale * uiChartWidth);
+            float newRangeEnd = newRangeStart + range.getSize();
+
+            updateRanges(newRangeStart, newRangeEnd, true);
+
             invalidateOnAnimation();
         }
     }

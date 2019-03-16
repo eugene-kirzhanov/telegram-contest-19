@@ -103,7 +103,7 @@ public class AssetsDataSource implements DataSource {
                 }
             }
 
-            if (valuesCount > 0 && x != null && lines.size() > 0) {
+            if (valuesCount > 0 && x != null && !lines.isEmpty()) {
 
                 if (x.values.length > valuesCount) {
                     long[] trimmedValues = new long[valuesCount];

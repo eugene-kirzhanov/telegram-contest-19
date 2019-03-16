@@ -1,5 +1,6 @@
 package by.anegin.telegram_contests.core.ui.view;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -53,9 +54,10 @@ public class ChartView extends View {
     private OnGraphVisibilityChangeListener onGraphVisibilityChangeListener;
 
     private final Paint guidelinePaint = new Paint();
-    private final Paint graphPathPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
     private final Matrix graphMatrix = new Matrix();
+
+    private float graphStrokeWidth = 0f;
 
     private final AtomicRange range = new AtomicRange();
 
@@ -63,7 +65,8 @@ public class ChartView extends View {
     private float xScale = 1f;
     private volatile float yScale = 1f;
 
-    private UiChart uiChart;
+    private final List<Graph> graphs = new ArrayList<>();
+    private float uiChartWidth;
 
     private int touchSlop;
     private int minFlingVelocity;
@@ -76,8 +79,6 @@ public class ChartView extends View {
     private float lastTouchX;
 
     private final Set<String> hiddenGraphIds = new HashSet<>();
-
-    private ScaleThread scaleThread;
 
     private final ExecutorService yScaleCalculateExecutor = Executors.newFixedThreadPool(2);
     private Future<?> yScaleCalculationTask;
@@ -106,15 +107,12 @@ public class ChartView extends View {
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0);
         int guidelineColor = viewAttrs.getColor(R.styleable.ChartView_guide_line_color, Color.TRANSPARENT);
         float guidelineWidth = viewAttrs.getDimension(R.styleable.ChartView_guide_line_width, 0f);
-        float graphLineWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
+        graphStrokeWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
         viewAttrs.recycle();
 
         guidelinePaint.setStyle(Paint.Style.STROKE);
         guidelinePaint.setColor(guidelineColor);
         guidelinePaint.setStrokeWidth(guidelineWidth);
-
-        graphPathPaint.setStyle(Paint.Style.STROKE);
-        graphPathPaint.setStrokeWidth(graphLineWidth);
 
         ViewConfiguration vc = ViewConfiguration.get(context);
         touchSlop = vc.getScaledTouchSlop();
@@ -122,22 +120,6 @@ public class ChartView extends View {
         maxFlingVelocity = vc.getScaledMaximumFlingVelocity();
 
         flingScroller = new OverScroller(context);
-    }
-
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        scaleThread = new ScaleThread(yScale);
-        scaleThread.start();
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        if (scaleThread != null) {
-            scaleThread.cancel();
-            scaleThread = null;
-        }
-        super.onDetachedFromWindow();
     }
 
     @Override
@@ -149,13 +131,9 @@ public class ChartView extends View {
     public void onDraw(Canvas canvas) {
         canvas.drawRect(0f, 0f, getWidth(), getHeight(), guidelinePaint);
 
-        UiChart uiChart = this.uiChart;
-        if (uiChart != null) {
-            for (Graph graph : uiChart.graphs) {
-                if (!hiddenGraphIds.contains(graph.id)) {
-                    Graph transformedGraph = graph.transform(graphMatrix);
-                    transformedGraph.draw(canvas, graphPathPaint);
-                }
+        synchronized (graphs) {
+            for (Graph graph : graphs) {
+                graph.draw(canvas);
             }
         }
     }
@@ -175,16 +153,23 @@ public class ChartView extends View {
     }
 
     public void setUiChart(UiChart uiChart) {
-        this.uiChart = uiChart;
+        synchronized (graphs) {
+            graphs.clear();
+            if (uiChart != null) {
+                uiChartWidth = uiChart.width;
+                for (Graph graph : uiChart.graphs) {
+                    graphs.add(new Graph(graph, graphStrokeWidth));
+                }
+            } else {
+                uiChartWidth = 0f;
+            }
+        }
+
         calculateScaleAndOffset(false);
+
         if (onUiChartChangeListener != null) {
             onUiChartChangeListener.onUiChartChanged(uiChart);
         }
-        invalidate();
-    }
-
-    public UiChart getUiChart() {
-        return uiChart;
     }
 
     public void setOnUiChartChangeListener(OnUiChartChangeListener listener) {
@@ -251,44 +236,83 @@ public class ChartView extends View {
     }
 
     private void calculateScaleAndOffset(boolean animateYScale) {
-        UiChart uiChart = this.uiChart;
-        if (uiChart == null) return;
+        final float uiChartWidth;
+        final List<Graph> graphs;
+        synchronized (this.graphs) {
+            uiChartWidth = this.uiChartWidth;
+            graphs = new ArrayList<>(this.graphs);
+        }
+        if (uiChartWidth == 0f || graphs.isEmpty()) return;
 
-        float visibleChartWidth = uiChart.width * range.getSize();
-        xScale = getWidth() / visibleChartWidth;
-        xOffs = -xScale * range.getStart() * uiChart.width;
-
-        updateGraphMatrix(yScale);
+        final float rangeStart = range.getStart();
+        final float rangeEnd = range.getEnd();
 
         long calculateGeneration = lastCalculateGeneration.incrementAndGet();
-        float rangeStart = range.getStart();
-        float rangeEnd = range.getEnd();
+
         if (yScaleCalculationTask != null) {
             yScaleCalculationTask.cancel(true);
             yScaleCalculationTask = null;
         }
         yScaleCalculationTask = yScaleCalculateExecutor.submit(() -> {
-            float startX = uiChart.width * rangeStart;
-            float endX = uiChart.width * rangeEnd;
+
+            xScale = getWidth() / (uiChartWidth * range.getSize());
+            xOffs = xScale * range.getStart() * uiChartWidth;
+
+            float startX = uiChartWidth * rangeStart;
+            float endX = uiChartWidth * rangeEnd;
 
             float maxY = 0f;
-            for (Graph graph : uiChart.graphs) {
+            for (Graph graph : graphs) {
                 float max = graph.findMaxYInRange(startX, endX);
                 if (max > maxY) maxY = max;
             }
 
             float calculatedYScale = (float) getHeight() / maxY;
+
             if (lastCalculateGeneration.get() == calculateGeneration) {
-                scaleThread.setYScale(calculatedYScale, animateYScale);
+                if (animateYScale) {
+                    animateYScale(calculatedYScale);
+                } else {
+                    yScale = calculatedYScale;
+                    updateGraphMatrix();
+                    invalidateOnAnimation();
+                }
             }
         });
+
+        invalidate();
     }
 
-    private void updateGraphMatrix(float scale) {
-        yScale = scale;
+    private ValueAnimator scaleAnimator;
+
+    private void animateYScale(float targetScale) {
+        if (scaleAnimator != null) {
+            if (scaleAnimator.isRunning()) {
+                scaleAnimator.cancel();
+            }
+            scaleAnimator = null;
+        }
+        ValueAnimator anim = ValueAnimator.ofFloat(yScale, targetScale);
+        anim.setDuration(250);
+        anim.addUpdateListener(animation -> {
+            yScale = (float) animation.getAnimatedValue();
+            updateGraphMatrix();
+            invalidateOnAnimation();
+        });
+        scaleAnimator = anim;
+        post(anim::start);
+    }
+
+    private void updateGraphMatrix() {
         graphMatrix.reset();
-        graphMatrix.setTranslate(xOffs, getHeight());
-        graphMatrix.preScale(xScale, -scale);
+        graphMatrix.setTranslate(-xOffs, getHeight());
+        graphMatrix.preScale(xScale, -yScale);
+
+        synchronized (graphs) {
+            for (Graph graph : graphs) {
+                graph.transformPoints(graphMatrix);
+            }
+        }
     }
 
     private void invalidateOnAnimation() {
@@ -378,11 +402,11 @@ public class ChartView extends View {
     }
 
     private void moveChart(float dx) {
-        UiChart uiChart = this.uiChart;
-        if (uiChart == null) return;
+        float uiChartWidth = this.uiChartWidth;
+        if (uiChartWidth == 0f) return;
 
         float unscaledOffset = dx / xScale;
-        float rangeOffs = unscaledOffset / uiChart.width;
+        float rangeOffs = unscaledOffset / uiChartWidth;
 
         float newRangeStart = range.getStart() - rangeOffs;
         float newRangeEnd = range.getEnd() - rangeOffs;
@@ -392,12 +416,12 @@ public class ChartView extends View {
     }
 
     private void flingChart(float xVelocity) {
-        UiChart uiChart = this.uiChart;
-        if (uiChart == null) return;
+        float uiChartWidth = this.uiChartWidth;
+        if (uiChartWidth == 0f) return;
 
-        int startX = (int) (xScale * range.getStart() * uiChart.width);
+        int startX = (int) (xScale * range.getStart() * uiChartWidth);
         int minX = 0;
-        int maxX = (int) (xScale * uiChart.width) - getWidth();
+        int maxX = (int) (xScale * uiChartWidth) - getWidth();
 
         flingScroller.forceFinished(true);
         flingScroller.fling(startX, 0, (int) -xVelocity, 0, minX, maxX, 0, 0);
@@ -409,11 +433,11 @@ public class ChartView extends View {
     public void computeScroll() {
         if (touchState != TOUCH_STATE_FLING) return;
         if (flingScroller.computeScrollOffset()) {
-            UiChart uiChart = this.uiChart;
-            if (uiChart == null) return;
+            float uiChartWidth = this.uiChartWidth;
+            if (uiChartWidth == 0f) return;
 
             int currOffs = flingScroller.getCurrX();
-            float newRangeStart = (float) currOffs / (xScale * uiChart.width);
+            float newRangeStart = (float) currOffs / (xScale * uiChartWidth);
             float newRangeEnd = newRangeStart + range.getSize();
 
             updateRanges(newRangeStart, newRangeEnd, true);
@@ -479,55 +503,6 @@ public class ChartView extends View {
                 return new SavedState[size];
             }
         };
-    }
-
-    // =======
-
-    private class ScaleThread extends Thread {
-
-        private final long interval = 10;
-
-        private volatile boolean isRunning = true;
-
-        private volatile float targetYScale;
-
-        private ScaleThread(float yScale) {
-            this.targetYScale = yScale;
-        }
-
-        private void cancel() {
-            isRunning = false;
-        }
-
-        private void setYScale(float scale, boolean withAnimation) {
-            targetYScale = scale;
-            if (!withAnimation) {
-                updateGraphMatrix(scale);
-                invalidateOnAnimation();
-            }
-        }
-
-        @Override
-        public void run() {
-            while (isRunning) {
-                float yScale = ChartView.this.yScale;
-                float targetScale = this.targetYScale;
-                if (targetScale != yScale) {
-                    float diff = targetScale - yScale;
-                    if (Math.abs(diff) < 0.00001f) {
-                        updateGraphMatrix(targetScale);
-                    } else {
-                        float offs = diff * interval / 100f;
-                        updateGraphMatrix(yScale + offs);
-                    }
-                    invalidateOnAnimation();
-                }
-                try {
-                    Thread.sleep(interval);
-                } catch (InterruptedException ignored) {
-                }
-            }
-        }
     }
 
 }

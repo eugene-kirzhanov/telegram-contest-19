@@ -41,11 +41,12 @@ public class MiniChartView extends View {
 
     private final Paint windowPaint = new Paint();
     private final Paint touchRipplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint chartPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Paint fadePaint = new Paint();
 
     private float windowStrokeWidthTopBottom;
     private float windowStrokeWidthLeftRight;
+
+    private float chartLineWidth;
 
     private float rangeStart = 0f;
     private float rangeEnd = 1f;
@@ -100,7 +101,7 @@ public class MiniChartView extends View {
                 viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_top_bottom, 0f);
         windowStrokeWidthLeftRight =
                 viewAttrs.getDimension(R.styleable.MiniChartView_window_stroke_width_left_right, 0f);
-        float chartLineWidth = viewAttrs.getDimension(R.styleable.MiniChartView_chart_line_width, 1f);
+        chartLineWidth = viewAttrs.getDimension(R.styleable.MiniChartView_chart_line_width, 1f);
         viewAttrs.recycle();
 
         if (rangeStart < 0f) rangeStart = 0f;
@@ -111,9 +112,6 @@ public class MiniChartView extends View {
 
         touchRipplePaint.setStyle(Paint.Style.FILL);
         touchRipplePaint.setColor(windowColor);
-
-        chartPaint.setStyle(Paint.Style.STROKE);
-        chartPaint.setStrokeWidth(chartLineWidth);
 
         fadePaint.setStyle(Paint.Style.FILL);
         fadePaint.setColor(fadeColor);
@@ -149,9 +147,7 @@ public class MiniChartView extends View {
         List<Graph> graphs = this.graphs;
         if (graphs != null) {
             for (Graph graph : graphs) {
-                if (!hiddenGraphIds.contains(graph.id)) {
-                    graph.draw(canvas, chartPaint);
-                }
+                graph.draw(canvas);
             }
         }
 
@@ -332,17 +328,17 @@ public class MiniChartView extends View {
 
     @Override
     public void onSizeChanged(int w, int h, int oldw, int oldh) {
-        UiChart uiChart = this.uiChart;
-        if (uiChart != null) {
-            enqueueUpdateData(uiChart, getWidth(), getHeight());
-        }
+        enqueueUpdateData();
     }
 
     public void attachToChartView(ChartView chartView) {
-        enqueueUpdateData(chartView.getUiChart(), getWidth(), getHeight());
+        chartView.setOnUiChartChangeListener((uiChart) -> {
+            this.uiChart = uiChart;
+            enqueueUpdateData();
+        });
 
-        chartView.setOnUiChartChangeListener(uiChart -> enqueueUpdateData(uiChart, getWidth(), getHeight()));
         chartView.setOnRangeChangeListener((start, end) -> updateRanges(start, end, false));
+
         chartView.setOnGraphVisibilityChangeListener(hiddenGraphIds -> {
             this.hiddenGraphIds.clear();
             this.hiddenGraphIds.addAll(hiddenGraphIds);
@@ -354,13 +350,16 @@ public class MiniChartView extends View {
         chartView.setRange(rangeStart, rangeEnd, false);
     }
 
-    private void enqueueUpdateData(UiChart uiChart, int viewWidth, int viewHeight) {
+    private void enqueueUpdateData() {
+        UiChart uiChart = this.uiChart;
+        int viewWidth = getWidth();
+        int viewHeight = getHeight();
+        if (uiChart == null || viewWidth == 0 || viewHeight == 0) return;
         long updateGeneration = ++lastUpdateGeneration;
         updateDataExecutor.execute(() -> {
             final List<Graph> newGraphs = updateData(uiChart, viewWidth, viewHeight);
             if (lastUpdateGeneration == updateGeneration) {
                 post(() -> {
-                    this.uiChart = uiChart;
                     this.graphs = newGraphs;
                     invalidate();
                 });
@@ -385,8 +384,10 @@ public class MiniChartView extends View {
         matrix.preScale(scaleX, -scaleY);
 
         List<Graph> graphs = new ArrayList<>();
-        for (Graph graph : uiChart.graphs) {
-            graphs.add(graph.transform(matrix));
+        for (Graph g : uiChart.graphs) {
+            Graph graph = new Graph(g, chartLineWidth);
+            graph.transformPoints(matrix);
+            graphs.add(graph);
         }
         return graphs;
     }

@@ -6,37 +6,43 @@ import android.graphics.Paint;
 
 public class Graph {
 
-    public static final int STATE_VISIBLE = 1;
-    public static final int STATE_HIDDEN = 2;
-    public static final int STATE_SHOWING = 3;
-    public static final int STATE_HIDING = 4;
+    private static final int STATE_VISIBLE = 1;
+    private static final int STATE_HIDDEN = 2;
+    private static final int STATE_SHOWING = 3;
+    private static final int STATE_HIDING = 4;
 
-    public final String id;
+    private final String id;
 
     private final float[] points;     // x0, y0, x1, y1, x1, y1, x2, y2, ...
+    private final float[] transformedPoints;
 
-    private final int color;
+    private int state = STATE_VISIBLE;
 
-    private final int state;
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
-    Graph(String id, float[] points, final int color, final int state) {
-        this.id = id;
-        this.points = points;
-        this.color = color;
-        this.state = state;
+    // copy constructor
+    public Graph(Graph graph, float strokeWidth) {
+        this(graph.id, graph.points, graph.paint.getColor());
+        paint.setStrokeWidth(strokeWidth);
     }
 
-    public void draw(Canvas canvas, Paint paint) {
+    Graph(String id, float[] points, final int color) {
+        this.id = id;
+        this.points = points;
+        this.transformedPoints = new float[points.length];
+        System.arraycopy(points, 0, transformedPoints, 0, points.length);
+        paint.setStyle(Paint.Style.STROKE);
         paint.setColor(color);
-        if (points.length > 3) {
-            canvas.drawLines(points, paint);
+    }
+
+    public void draw(Canvas canvas) {
+        if (transformedPoints.length > 3 && state == STATE_VISIBLE) {
+            canvas.drawLines(transformedPoints, paint);
         }
     }
 
-    public Graph transform(Matrix matrix) {
-        float[] scaledPoints = new float[points.length];
-        matrix.mapPoints(scaledPoints, points);
-        return new Graph(id, scaledPoints, color, state);
+    public void transformPoints(Matrix matrix) {
+        matrix.mapPoints(transformedPoints, points);
     }
 
     public float findMaxYInRange(float startX, float endX) {

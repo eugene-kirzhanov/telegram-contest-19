@@ -19,7 +19,7 @@ public class Graph {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
     public volatile int state = STATE_VISIBLE;
-    public volatile float animationValue = 1f;
+    public volatile float alpha = 1f;
 
     // copy constructor
     public Graph(Graph graph, float strokeWidth) {
@@ -38,7 +38,7 @@ public class Graph {
 
     public void draw(Canvas canvas) {
         if (transformedPoints.length > 3) {
-            paint.setAlpha((int) (animationValue * 255));
+            paint.setAlpha((int) (alpha * 255));
             canvas.drawLines(transformedPoints, paint);
         }
     }

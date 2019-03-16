@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -459,7 +458,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     }
 
     private ValueAnimator makeToggleAnimation(Graph graph, float endValue, int progressState, int finalState, Interpolator interpolator, Runnable onEndAction) {
-        float startValue = graph.animationValue;
+        float startValue = graph.alpha;
         long duration = (long) (TOGGLE_ANIMATION_DURATION * Math.abs(endValue - startValue));
 
         ValueAnimator anim = ValueAnimator.ofFloat(startValue, endValue);
@@ -471,16 +470,14 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
                 onEndAction.run();
                 if (graph.state == progressState) {
                     graph.state = finalState;
-//                    graph.animationValue = endValue;
+                    graph.alpha = endValue;
                     invalidate();
                 }
             }
         });
         anim.addUpdateListener(animation -> {
             if (graph.state == progressState) {
-                float value = (float) animation.getAnimatedValue();
-                graph.animationValue = value;
-                Log.v("ABC", "value: " + value);
+                graph.alpha = (float) animation.getAnimatedValue();
                 invalidate();
             } else {
                 animation.cancel();
@@ -493,7 +490,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
         List<Graph> graphs = this.graphs;
         for (Graph graph : graphs) {
             graph.state = Graph.STATE_VISIBLE;
-            graph.animationValue = 1f;
+            graph.alpha = 1f;
             scaleAnimationHelper.calculate(false);
         }
 

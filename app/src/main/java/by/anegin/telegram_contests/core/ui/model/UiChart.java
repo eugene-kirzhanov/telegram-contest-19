@@ -4,16 +4,21 @@ import android.graphics.Matrix;
 import by.anegin.telegram_contests.core.data.model.Chart;
 import by.anegin.telegram_contests.core.data.model.Column;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class UiChart {
 
+    public final List<UiDate> dates;
     public final List<Graph> graphs;
     public final long width;
 
     public UiChart(Chart chart) {
         if (chart.x.values.length == 0 || chart.lines.isEmpty()) {
+            dates = new ArrayList<>();
             graphs = new ArrayList<>();
             width = 0;
             return;
@@ -24,13 +29,11 @@ public class UiChart {
         long minY = Long.MAX_VALUE;
         long maxY = Long.MIN_VALUE;
         for (Column.Line line : chart.lines) {
-
             int count = Math.min(chart.x.values.length, line.values.length);
             for (int i = 0; i < count; i++) {
                 if (line.values[i] > maxY) maxY = line.values[i];
                 if (line.values[i] < minY) minY = line.values[i];
             }
-
         }
 
         Matrix matrix = new Matrix();
@@ -43,6 +46,13 @@ public class UiChart {
                 matrix.mapPoints(points);
                 graphs.add(new Graph(line.id, points, line.color));
             }
+        }
+
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.US);
+        dates = new ArrayList<>(chart.x.values.length);
+        for (long xv : chart.x.values) {
+            String dateString = sdf.format(new Date(xv));
+            dates.add(new UiDate(xv - minMaxX[0], dateString));
         }
 
         width = minMaxX[1] - minMaxX[0];

@@ -3,13 +3,11 @@ package by.anegin.telegram_contests.core.ui.view;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Paint;
+import android.graphics.*;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.*;
@@ -19,6 +17,7 @@ import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
+import by.anegin.telegram_contests.core.ui.model.UiDate;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
 
 import java.util.ArrayList;
@@ -59,6 +58,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     private final Paint guidelinePaint = new Paint();
 
+    private final TextPaint textPaint = new TextPaint();
+    private final Paint paint = new Paint();
+
     private final Matrix graphMatrix = new Matrix();
 
     private float graphStrokeWidth = 0f;
@@ -69,6 +71,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private float xScale = 1f;
     private volatile float yScale = 0f;
 
+    private final List<UiDate> dates = new ArrayList<>();
     private final List<Graph> graphs = new ArrayList<>();
     private float uiChartWidth;
 
@@ -110,6 +113,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         int guidelineColor = viewAttrs.getColor(R.styleable.ChartView_guide_line_color, Color.TRANSPARENT);
         float guidelineWidth = viewAttrs.getDimension(R.styleable.ChartView_guide_line_width, 0f);
         graphStrokeWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
+        float textSize = viewAttrs.getDimension(R.styleable.ChartView_text_size, 0f);
+        int textColor = viewAttrs.getColor(R.styleable.ChartView_text_color, Color.TRANSPARENT);
         viewAttrs.recycle();
 
         guidelinePaint.setStyle(Paint.Style.STROKE);
@@ -122,10 +127,17 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         maxFlingVelocity = vc.getScaledMaximumFlingVelocity();
 
         flingScroller = new OverScroller(context);
+
+        textPaint.setTextSize(textSize);
+        textPaint.setColor(textColor);
+
+        paint.setColor(Color.BLUE);
+        paint.setStyle(Paint.Style.STROKE);
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        calculateXScale();
         scaleAnimationHelper.calculate(false);
     }
 
@@ -136,10 +148,42 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         if (yScale == 0f) return;
 
         synchronized (graphs) {
+            canvas.save();
+            canvas.clipRect(0f, 0f, getWidth(), getHeight());
             for (Graph graph : graphs) {
                 graph.draw(canvas);
             }
+            canvas.restore();
         }
+
+        canvas.save();
+        canvas.translate(-xOffs, 0f);
+        float ty = getHeight() - textPaint.ascent() + textPaint.descent();
+        synchronized (texts) {
+            for (Txt txt : texts) {
+                String text = txt.uiDate != null ? txt.uiDate.text : "---";
+                canvas.drawText(text, txt.sx, ty, textPaint);
+            }
+        }
+        canvas.restore();
+    }
+
+    private class Txt {
+        private float sx;  // screen x
+        private UiDate uiDate;
+    }
+
+    private final List<Txt> texts = new ArrayList<>();
+
+    private final Rect textRect = new Rect();
+    private float dateWidth = 0f;
+
+    private float minRangeWidth = 0f;
+    private float minXScale = 1f;
+
+    public void setMinRangeWidth(float minRangeWidth) {
+        this.minRangeWidth = minRangeWidth;
+        minXScale = getWidth() / (uiChartWidth * minRangeWidth);
     }
 
     public void setRange(float start, float end, boolean animateYScale) {
@@ -158,6 +202,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     public void setUiChart(UiChart uiChart, Set<String> hiddenGraphsIds) {
         synchronized (graphs) {
+            dates.clear();
             graphs.clear();
             if (uiChart != null) {
                 uiChartWidth = uiChart.width;
@@ -172,12 +217,18 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                     }
                     graphs.add(graph);
                 }
+                dates.addAll(uiChart.dates);
+
+                String text = uiChart.dates.get(0).text;
+                textPaint.getTextBounds(text, 0, text.length(), textRect);
+                dateWidth = textRect.width();
+
             } else {
                 uiChartWidth = 0f;
                 yScale = 0f;
             }
         }
-
+        calculateXScale();
         scaleAnimationHelper.calculate(false);
 
         if (onUiChartChangeListener != null) {
@@ -219,7 +270,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         return graphs.size();
     }
 
-    // =======
+    // ==========
 
     private void updateRanges(float start, float end, boolean animateYScale) {
         if (start < 0f) {
@@ -234,8 +285,56 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             if (onRangeChangeListener != null) {
                 onRangeChangeListener.onRangeChangeListener(start, end);
             }
+            calculateXScale();
             scaleAnimationHelper.calculate(animateYScale);
         }
+    }
+
+    private void calculateXScale() {
+        float newXScale = getWidth() / (uiChartWidth * range.getSize());
+        float newXOffs = newXScale * range.getStart() * uiChartWidth;
+
+        synchronized (this.texts) {
+            if (this.texts.isEmpty() || newXScale != xScale) {
+
+                float allChartWidth = newXScale * uiChartWidth;
+                float preSpacing = dateWidth * 0.6f;
+                int datesCount = 2 + (int) ((allChartWidth - 2 * dateWidth - preSpacing) / (dateWidth + preSpacing));
+                float spacing = (allChartWidth - (dateWidth * datesCount)) / (datesCount - 1);
+
+                List<Txt> newTexts = new ArrayList<>();
+                float x = 0f;
+                while (x < allChartWidth) {
+
+                    // find nearest date
+                    float cx = (x + dateWidth / 2f) / newXScale;
+                    float minDist = Float.MAX_VALUE;
+                    UiDate nearestDate = null;
+                    for (UiDate uiDate : dates) {
+                        float dist = Math.abs(uiDate.x - cx);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestDate = uiDate;
+                        }
+                    }
+
+                    Txt txt = new Txt();
+                    txt.sx = x;
+                    txt.uiDate = nearestDate;
+                    newTexts.add(txt);
+
+                    x += dateWidth + spacing;
+                }
+
+                this.texts.clear();
+                this.texts.addAll(newTexts);
+            }
+        }
+
+        this.xScale = newXScale;
+        this.xOffs = newXOffs;
+
+        invalidateOnAnimation();
     }
 
     @Override
@@ -247,9 +346,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             graphs = new ArrayList<>(this.graphs);
         }
         if (uiChartWidth == 0f || graphs.isEmpty()) return yScale;
-
-        xScale = getWidth() / (uiChartWidth * range.getSize());
-        xOffs = xScale * range.getStart() * uiChartWidth;
 
         float startX = uiChartWidth * range.getStart();
         float endX = uiChartWidth * range.getEnd();
@@ -271,11 +367,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     @Override
     public void onScaleUpdated(float scale) {
         yScale = scale;
-        updateGraphMatrix();
-        invalidateOnAnimation();
-    }
 
-    private void updateGraphMatrix() {
         graphMatrix.reset();
         graphMatrix.setTranslate(-xOffs, getHeight());
         graphMatrix.preScale(xScale, -yScale);
@@ -285,6 +377,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 graph.transform(graphMatrix);
             }
         }
+
+        invalidateOnAnimation();
     }
 
     private void invalidateOnAnimation() {

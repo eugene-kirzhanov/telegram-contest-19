@@ -33,7 +33,9 @@
             android:padding="16dp"
             app:graph_line_width="2dp"
             app:guide_line_color="?attr/chart_guideline_color"
-            app:guide_line_width="1dp" />
+            app:guide_line_width="1dp"
+            app:text_color="?attr/chart_text_color"
+            app:text_size="14sp" />
 
         <by.anegin.telegram_contests.core.ui.view.MiniChartView
             android:id="@+id/miniChartView"
@@ -41,6 +43,7 @@
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="16dp"
             app:chart_line_width="1dp"

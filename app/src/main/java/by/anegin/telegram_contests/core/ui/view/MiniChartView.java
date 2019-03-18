@@ -298,7 +298,12 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
 
             invalidate();
 
+
             if (notifyListener && attachedChartView != null) {
+
+                float minRangeWidth = 2f * (dragSize + windowStrokeWidthLeftRight) / getWidth();
+                attachedChartView.setMinRangeWidth(minRangeWidth);
+
                 attachedChartView.setRange(start, end, true);
             }
         }
@@ -343,6 +348,11 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     @Override
     public void onSizeChanged(int w, int h, int oldw, int oldh) {
         enqueueUpdateData();
+
+        if (attachedChartView != null) {
+            float minRangeWidth = 2f * (dragSize + windowStrokeWidthLeftRight) / getWidth();
+            attachedChartView.setMinRangeWidth(minRangeWidth);
+        }
     }
 
     public void attachToChartView(ChartView chartView) {

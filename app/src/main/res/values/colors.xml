@@ -15,6 +15,8 @@
     <color name="graphs_text_light">#000</color>
     <color name="graphs_divider_light">#e1e1e1</color>
 
+    <color name="chart_text_color_light">#919ea6</color>
+
     <color name="colorPrimary_light">#517da2</color>
     <color name="colorPrimaryDark_light">#426382</color>
     <color name="colorAccent_light">#3896d4</color>
@@ -32,6 +34,8 @@
 
     <color name="graphs_text_dark">#fff</color>
     <color name="graphs_divider_dark">#0c141f</color>
+
+    <color name="chart_text_color_dark">#536675</color>
 
     <color name="colorPrimary_dark">#212d3b</color>
     <color name="colorPrimaryDark_dark">#1a242e</color>

@@ -15,6 +15,8 @@
 
         <item name="graphs_text_color">@color/graphs_text_light</item>
         <item name="graphs_divider_color">@color/graphs_divider_light</item>
+
+        <item name="chart_text_color">@color/chart_text_color_light</item>
     </style>
 
     <style name="BaseAppTheme.Dark">
@@ -30,6 +32,8 @@
 
         <item name="graphs_text_color">@color/graphs_text_dark</item>
         <item name="graphs_divider_color">@color/graphs_divider_dark</item>
+
+        <item name="chart_text_color">@color/chart_text_color_dark</item>
     </style>
 
     <style name="AppThemeLight" parent="BaseAppTheme.Light" />

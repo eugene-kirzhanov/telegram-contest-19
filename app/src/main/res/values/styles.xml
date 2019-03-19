@@ -1,6 +1,8 @@
 <resources>
 
-    <style name="BaseAppTheme"/>
+    <style name="BaseAppTheme">
+        <item name="android:windowAnimationStyle">@style/WindowAnimationStyle</item>
+    </style>
 
     <style name="BaseAppTheme.Light">
         <item name="android:windowBackground">@color/background_light</item>
@@ -39,5 +41,10 @@
     <style name="AppThemeLight" parent="BaseAppTheme.Light" />
 
     <style name="AppThemeDark" parent="BaseAppTheme.Dark" />
+
+    <style name="WindowAnimationStyle">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
 
 </resources>

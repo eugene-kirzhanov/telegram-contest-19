@@ -25,6 +25,7 @@ public class Graph {
     public Graph(Graph graph, float strokeWidth) {
         this(graph.id, graph.points, graph.paint.getColor());
         paint.setStrokeWidth(strokeWidth);
+        //paint.setStrokeCap(Paint.Cap.ROUND);    // increases draw time up to 1.5-2 times
     }
 
     Graph(String id, float[] points, final int color) {

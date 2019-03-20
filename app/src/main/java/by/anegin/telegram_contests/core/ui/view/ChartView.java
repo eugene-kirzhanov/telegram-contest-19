@@ -1,5 +1,6 @@
 package by.anegin.telegram_contests.core.ui.view;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -11,6 +12,8 @@ import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.*;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.OverScroller;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
@@ -20,9 +23,7 @@ import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.model.UiDate;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
 
@@ -33,6 +34,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private static final int AUTOSCALE_ANIMATION_DURATION = 250;
     private static final int TOGGLE_ANIMATION_DURATION = 200;
 
+    private static final int DATE_LABEL_FADE_DURATION = 300;
 
     public interface OnUiChartChangeListener {
         void onUiChartChanged(UiChart uiChart);
@@ -68,7 +70,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private final AtomicRange range = new AtomicRange();
 
     private float xOffs = 0f;
-    private float xScale = 1f;
+    private float xScale = 0f;
     private volatile float yScale = 0f;
 
     private final List<UiDate> dates = new ArrayList<>();
@@ -88,6 +90,19 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this, AUTOSCALE_ANIMATION_DURATION);
 
     private final ToggleAnimationHelper toggleAnimationHelper = new ToggleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
+
+    private float minRangeWidth = 0f;
+
+    private final Rect textRect = new Rect();
+
+    // =======
+
+    private final List<DateLabel> dateLabels = new ArrayList<>();
+    private final Map<UiDate, DateLabel> hidingDateLabels = new HashMap<>();
+
+    private float dateLabelWidth = 0f;
+
+    // =======
 
     public ChartView(Context context) {
         super(context);
@@ -136,16 +151,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     }
 
     @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        calculateXScale();
-        scaleAnimationHelper.calculate(false);
-    }
-
-    @Override
     public void onDraw(Canvas canvas) {
         canvas.drawRect(0f, 0f, getWidth(), getHeight(), guidelinePaint);
 
-        if (yScale == 0f) return;
+        if (xScale == 0f || yScale == 0f) return;
 
         synchronized (graphs) {
             canvas.save();
@@ -156,34 +165,145 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             canvas.restore();
         }
 
+        float ty = getHeight() - textPaint.ascent() + textPaint.descent();
+
         canvas.save();
         canvas.translate(-xOffs, 0f);
-        float ty = getHeight() - textPaint.ascent() + textPaint.descent();
-        synchronized (texts) {
-            for (Txt txt : texts) {
-                String text = txt.uiDate != null ? txt.uiDate.text : "---";
-                canvas.drawText(text, txt.sx, ty, textPaint);
-            }
+
+        textPaint.setAlpha(255);
+        synchronized (dates) {
+            canvas.drawText(dates.get(0).text, 0f, ty, textPaint);
+            canvas.drawText(dates.get(dates.size() - 1).text, uiChartWidth * xScale - dateLabelWidth, ty, textPaint);
         }
+
+        float halfDateWidth = dateLabelWidth / 2f;
+        for (DateLabel label : dateLabels) {
+            textPaint.setAlpha((int) (label.alpha * 255));
+            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, ty, textPaint);
+        }
+        for (DateLabel label : hidingDateLabels.values()) {
+            textPaint.setAlpha((int) (label.alpha * 255));
+            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, ty, textPaint);
+        }
+
         canvas.restore();
     }
 
-    private class Txt {
-        private float sx;  // screen x
-        private UiDate uiDate;
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        calculateXScale();
+        scaleAnimationHelper.calculate(false);
     }
 
-    private final List<Txt> texts = new ArrayList<>();
+    private void calculateXScale() {
+        if (uiChartWidth == 0) return;
+        float newXScale = getWidth() / (uiChartWidth * range.getSize());
+        float newXOffs = newXScale * range.getStart() * uiChartWidth;
 
-    private final Rect textRect = new Rect();
-    private float dateWidth = 0f;
+        float remainingChartWidth = newXScale * uiChartWidth - dateLabelWidth * 2;   // excluding first/last date
 
-    private float minRangeWidth = 0f;
-    private float minXScale = 1f;
+        int labelsCount = dateLabels.size();
+        if (labelsCount == 0) {
+            // создаем исходный набор dateLabels для newXScale
+
+            // todo переделать на произвольный начальный newXScale
+
+            // считаем отступ между датами
+            float preSpacing = dateLabelWidth * 0.8f;        // предполагаемый отступ
+            labelsCount = (int) Math.floor((remainingChartWidth - preSpacing) / (dateLabelWidth + preSpacing));
+            float labelsSpacing = (remainingChartWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
+
+            float x = 1.5f * dateLabelWidth + labelsSpacing;
+            for (int i = 0; i < labelsCount; i++) {
+                dateLabels.add(new DateLabel(findNearestDate(x / newXScale, dates), x, 1f));
+                x += dateLabelWidth + labelsSpacing;
+            }
+
+        } else {
+
+            // перемещаем существующие видимые метки
+            float labelsSpacing = (remainingChartWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
+            float x = 1.5f * dateLabelWidth + labelsSpacing;
+            for (DateLabel label : dateLabels) {
+                label.sx = x;
+                x += dateLabelWidth + labelsSpacing;
+            }
+
+            // перемещаем существующие скрывающиеся метки
+            for (DateLabel label : hidingDateLabels.values()) {
+                label.sx = (label.sx / xScale) * newXScale;
+            }
+
+            // расстояние между метками
+            float distance = dateLabels.get(0).sx - 1.5f * dateLabelWidth;
+
+            if (newXScale > xScale && distance > dateLabelWidth * 1.5f) {
+                // расстояние между метками увеличивается и стало больше нужного размера
+                // вставляем метки между существующими, запускаем анимацию появления
+
+                x = dateLabelWidth + distance / 2;
+
+                List<DateLabel> newLabels = new ArrayList<>(dateLabels.size() * 2 + 1);
+                DateLabel newLabel = new DateLabel(findNearestDate(x / newXScale, dates), x, 0f);
+                newLabels.add(newLabel);
+                newLabel.fadeIn();
+
+                for (DateLabel label : dateLabels) {
+                    newLabels.add(label);
+                    x += dateLabelWidth + distance;
+                    newLabel = new DateLabel(findNearestDate(x / newXScale, dates), x, 0f);
+                    newLabels.add(newLabel);
+                    newLabel.fadeIn();
+                }
+
+                dateLabels.clear();
+                dateLabels.addAll(newLabels);
+
+            } else if (newXScale < xScale && distance < dateLabelWidth * 0.3f) {
+                // расстояние между метками уменьшается и стало меньше минимального размера
+                // удаляем метки через одну начиная с первой
+
+                // находим все нечетные
+                List<DateLabel> labelsToRemove = new ArrayList<>();
+                for (int i = 0; i < dateLabels.size(); i += 2) {
+                    labelsToRemove.add(dateLabels.get(i));
+                }
+
+                // удаляем из списка видимых
+                dateLabels.removeAll(labelsToRemove);
+
+                // добавляем в список скрываемых, запускаем анимацию скрытия
+                for (DateLabel label : labelsToRemove) {
+                    hidingDateLabels.put(label.uiDate, label);
+                    label.fadeOut();
+                }
+            }
+        }
+
+        this.xScale = newXScale;
+        this.xOffs = newXOffs;
+        invalidateOnAnimation();
+    }
+
+    private static UiDate findNearestDate(float x, List<UiDate> dates) {
+        // находим ближайшую дату к x (canvas x)
+        float dist;
+        float minDist = Float.MAX_VALUE;
+        UiDate nearestDate = null;
+        for (UiDate uiDate : dates) {
+            dist = Math.abs(uiDate.x - x);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestDate = uiDate;
+            }
+        }
+        return nearestDate;
+    }
+
+    // ==========
 
     public void setMinRangeWidth(float minRangeWidth) {
         this.minRangeWidth = minRangeWidth;
-        minXScale = getWidth() / (uiChartWidth * minRangeWidth);
     }
 
     public void setRange(float start, float end, boolean animateYScale) {
@@ -219,10 +339,12 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 }
                 dates.addAll(uiChart.dates);
 
-                String text = uiChart.dates.get(0).text;
-                textPaint.getTextBounds(text, 0, text.length(), textRect);
-                dateWidth = textRect.width();
-
+                float maxTextWidth = 0f;
+                for (UiDate date : uiChart.dates) {
+                    textPaint.getTextBounds(date.text, 0, date.text.length(), textRect);
+                    if (textRect.width() > maxTextWidth) maxTextWidth = textRect.width();
+                }
+                dateLabelWidth = maxTextWidth;
             } else {
                 uiChartWidth = 0f;
                 yScale = 0f;
@@ -288,53 +410,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             calculateXScale();
             scaleAnimationHelper.calculate(animateYScale);
         }
-    }
-
-    private void calculateXScale() {
-        float newXScale = getWidth() / (uiChartWidth * range.getSize());
-        float newXOffs = newXScale * range.getStart() * uiChartWidth;
-
-        synchronized (this.texts) {
-            if (this.texts.isEmpty() || newXScale != xScale) {
-
-                float allChartWidth = newXScale * uiChartWidth;
-                float preSpacing = dateWidth * 0.6f;
-                int datesCount = 2 + (int) ((allChartWidth - 2 * dateWidth - preSpacing) / (dateWidth + preSpacing));
-                float spacing = (allChartWidth - (dateWidth * datesCount)) / (datesCount - 1);
-
-                List<Txt> newTexts = new ArrayList<>();
-                float x = 0f;
-                while (x < allChartWidth) {
-
-                    // find nearest date
-                    float cx = (x + dateWidth / 2f) / newXScale;
-                    float minDist = Float.MAX_VALUE;
-                    UiDate nearestDate = null;
-                    for (UiDate uiDate : dates) {
-                        float dist = Math.abs(uiDate.x - cx);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            nearestDate = uiDate;
-                        }
-                    }
-
-                    Txt txt = new Txt();
-                    txt.sx = x;
-                    txt.uiDate = nearestDate;
-                    newTexts.add(txt);
-
-                    x += dateWidth + spacing;
-                }
-
-                this.texts.clear();
-                this.texts.addAll(newTexts);
-            }
-        }
-
-        this.xScale = newXScale;
-        this.xOffs = newXOffs;
-
-        invalidateOnAnimation();
     }
 
     @Override
@@ -541,6 +616,58 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             updateRanges(newRangeStart, newRangeEnd, true);
 
             invalidateOnAnimation();
+        }
+    }
+
+    // =======
+
+    private class DateLabel {
+
+        private final UiDate uiDate;
+        private float sx;  // screen x
+        private float alpha;
+        private ValueAnimator fadeInAnimation;
+
+        private DateLabel(UiDate uiDate, float sx, float alpha) {
+            this.uiDate = uiDate;
+            this.sx = sx;
+            this.alpha = alpha;
+        }
+
+        private void fadeIn() {
+            hidingDateLabels.remove(uiDate);   // cancel existing hiding label
+
+            long duration = (long) (DATE_LABEL_FADE_DURATION * (1f - alpha));
+
+            ValueAnimator anim = ValueAnimator.ofFloat(alpha, 1f);
+            anim.setDuration(duration);
+            anim.setInterpolator(new AccelerateInterpolator());
+            anim.addUpdateListener(animation -> {
+                alpha = (float) animation.getAnimatedValue();
+                invalidateOnAnimation();
+            });
+            this.fadeInAnimation = anim;
+            anim.start();
+        }
+
+        private void fadeOut() {
+            if (fadeInAnimation != null && fadeInAnimation.isRunning()) {
+                fadeInAnimation.cancel();
+            }
+
+            long duration = (long) (DATE_LABEL_FADE_DURATION * alpha);
+
+            ValueAnimator anim = ValueAnimator.ofFloat(alpha, 0f);
+            anim.setDuration(duration);
+            anim.setInterpolator(new DecelerateInterpolator());
+            anim.addUpdateListener(animation -> {
+                alpha = (float) animation.getAnimatedValue();
+                if (alpha == 0f) {
+                    hidingDateLabels.remove(uiDate);
+                }
+                invalidateOnAnimation();
+            });
+            anim.start();
         }
     }
 

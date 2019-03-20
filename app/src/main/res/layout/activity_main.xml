@@ -35,7 +35,7 @@
             app:guide_line_color="?attr/chart_guideline_color"
             app:guide_line_width="1dp"
             app:text_color="?attr/chart_text_color"
-            app:text_size="12sp" />
+            app:text_size="13sp" />
 
         <by.anegin.telegram_contests.core.ui.view.MiniChartView
             android:id="@+id/miniChartView"
@@ -48,11 +48,12 @@
             android:layout_marginBottom="16dp"
             app:chart_line_width="1dp"
             app:fade_color="?attr/minichart_fade_color"
-            app:range_end="0.3"
+            app:range_end="1"
             app:range_start="0"
             app:window_color="?attr/minichart_window_color"
             app:window_stroke_width_left_right="5dp"
             app:window_stroke_width_top_bottom="2dp" />
+            <!--app:range_end="0.08960843"-->
 
         <LinearLayout
             android:id="@+id/layoutGraphs"

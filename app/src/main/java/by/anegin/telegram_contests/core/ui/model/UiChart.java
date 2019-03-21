@@ -17,6 +17,7 @@ public class UiChart {
     public final List<Graph> graphs;
     public final long width;
     public final long minX;
+    public final long minY;
 
     public UiChart(Chart chart) {
         if (chart.x.values.length == 0 || chart.lines.isEmpty()) {
@@ -25,6 +26,7 @@ public class UiChart {
             graphs = new ArrayList<>();
             width = 0;
             minX = 0;
+            minY = 0;
             return;
         }
 
@@ -33,7 +35,7 @@ public class UiChart {
 
         xValues = new long[chart.x.values.length];
         for (int i = 0; i < xValues.length; i++) {
-            xValues[i] = chart.x.values[i] -minMaxX[0];
+            xValues[i] = chart.x.values[i] - minMaxX[0];
         }
 
         long minY = Long.MAX_VALUE;
@@ -45,6 +47,8 @@ public class UiChart {
                 if (line.values[i] < minY) minY = line.values[i];
             }
         }
+
+        this.minY = minY;
 
         Matrix matrix = new Matrix();
         matrix.setTranslate(-minMaxX[0], -minY);

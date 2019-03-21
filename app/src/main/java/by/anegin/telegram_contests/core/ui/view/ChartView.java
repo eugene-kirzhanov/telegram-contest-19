@@ -61,12 +61,14 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     private OnGraphVisibilityChangeListener onGraphVisibilityChangeListener;
 
-    private final Paint guidelinePaint = new Paint();
+    private final Paint gridLinePaint = new Paint();
 
     private final TextPaint textPaint = new TextPaint();
     private final Paint paint = new Paint();
 
     private final Matrix graphMatrix = new Matrix();
+
+    private float gridLineWidth = 0f;
 
     private float graphStrokeWidth = 0f;
 
@@ -78,6 +80,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     private long[] xValues;
     private long minX;
+    private long minY;
     private final List<UiDate> dates = new ArrayList<>();
     private final List<Graph> graphs = new ArrayList<>();
     private float uiChartWidth;
@@ -112,13 +115,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private Popup popup;
     private Popup.Data popupData;
 
+    private Float pendingClickX;
+
     // =======
-
-    // todo сделать view по ширине экрана. учитывать паддинги справа слева для рисования
-
-    // todo определиться с y-положением текста дат
-
-    // todo не рисовать текст выходящий за рамки канваса
 
     public ChartView(Context context) {
         super(context);
@@ -141,19 +140,22 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         float defaultGraphLineWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, context.getResources().getDisplayMetrics());
 
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0);
-        int guidelineColor = viewAttrs.getColor(R.styleable.ChartView_guide_line_color, Color.TRANSPARENT);
-        float guidelineWidth = viewAttrs.getDimension(R.styleable.ChartView_guide_line_width, 0f);
+        gridLineWidth = viewAttrs.getDimension(R.styleable.ChartView_grid_line_width, 0f);
+        int gridLineColor = viewAttrs.getColor(R.styleable.ChartView_grid_line_color, Color.TRANSPARENT);
         graphStrokeWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
         float textSize = viewAttrs.getDimension(R.styleable.ChartView_text_size, 0f);
         int textColor = viewAttrs.getColor(R.styleable.ChartView_text_color, Color.TRANSPARENT);
         int popupTitleTextColor = viewAttrs.getColor(R.styleable.ChartView_popup_title_color, Color.TRANSPARENT);
         float popupTitleTextSize = viewAttrs.getDimension(R.styleable.ChartView_popup_title_text_size, 0f);
-        float popupSpacing = viewAttrs.getDimension(R.styleable.ChartView_popup_spacing, 0f);
+        float popupValueTextSize = viewAttrs.getDimension(R.styleable.ChartView_popup_value_text_size, 0f);
+        float popupTopBottomPadding = viewAttrs.getDimension(R.styleable.ChartView_popup_top_bottom_padding, 0f);
+        float popupLeftRightPadding = viewAttrs.getDimension(R.styleable.ChartView_popup_left_right_padding, 0f);
+        float pointRadius = viewAttrs.getDimension(R.styleable.ChartView_point_radius, 0f);
+        int pointInnerColor = viewAttrs.getColor(R.styleable.ChartView_point_inner_color, Color.TRANSPARENT);
         viewAttrs.recycle();
 
-        guidelinePaint.setStyle(Paint.Style.STROKE);
-        guidelinePaint.setColor(guidelineColor);
-        guidelinePaint.setStrokeWidth(guidelineWidth);
+        gridLinePaint.setStyle(Paint.Style.STROKE);
+        gridLinePaint.setColor(gridLineColor);
 
         ViewConfiguration vc = ViewConfiguration.get(context);
         touchSlop = vc.getScaledTouchSlop();
@@ -169,27 +171,40 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         paint.setColor(Color.BLUE);
         paint.setStyle(Paint.Style.STROKE);
 
-        popup = new Popup(context, popupTitleTextColor, popupTitleTextSize, popupSpacing);
+        popup = new Popup(context,
+                popupTitleTextColor, popupTitleTextSize,
+                popupValueTextSize,
+                popupTopBottomPadding, popupLeftRightPadding,
+                graphStrokeWidth, pointRadius, pointInnerColor);
     }
 
     @Override
     public void onDraw(Canvas canvas) {
-        canvas.drawRect(0f, 0f, getWidth(), getHeight(), guidelinePaint);
+        // horizontal grid lines
+        float cellHeight = getHeight() / 5.5f;
+        gridLinePaint.setStrokeWidth(gridLineWidth);
+        for (int i = 1; i <= 5; i++) {
+            float y = getHeight() - cellHeight * i;
+            canvas.drawLine(0f, y, getWidth(), y, gridLinePaint);
+        }
+        gridLinePaint.setStrokeWidth(gridLineWidth * 2f);
+        canvas.drawLine(0f, getHeight(), getWidth(), getHeight(), gridLinePaint);
 
         if (xScale == 0f || yScale == 0f) return;
 
-        synchronized (graphs) {
-            canvas.save();
-            canvas.clipRect(0f, 0f, getWidth(), getHeight());
-            for (Graph graph : graphs) {
-                graph.draw(canvas);
-            }
-            canvas.restore();
-        }
-
-        float dateLabelsY = getHeight() - textPaint.ascent() + textPaint.descent();
         canvas.save();
         canvas.translate(-xOffs, 0f);
+
+        // selected data (vertical line)
+        Popup.Data popupData = this.popupData;
+        if (popupData != null) {
+            gridLinePaint.setStrokeWidth(gridLineWidth * 2f);
+            float x = popupData.chartX * xScale;
+            canvas.drawLine(x, 0, x, getHeight(), gridLinePaint);
+        }
+
+        // date labels
+        float dateLabelsY = getHeight() + 1.2f * (-textPaint.ascent() + textPaint.descent());
         textPaint.setAlpha(255);
         synchronized (dates) {
             canvas.drawText(dates.get(0).text, 0f, dateLabelsY, textPaint);
@@ -204,11 +219,23 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             textPaint.setAlpha((int) (label.alpha * 255));
             canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, dateLabelsY, textPaint);
         }
+
         canvas.restore();
 
-        Popup.Data popupData = this.popupData;
+        // charts
+        synchronized (graphs) {
+            canvas.save();
+            canvas.clipRect(0f, 0f, getWidth(), getHeight());
+            for (Graph graph : graphs) {
+                graph.draw(canvas);
+            }
+            canvas.restore();
+        }
+
+        // popup
         if (popupData != null) {
-            popup.draw(canvas, popupData);
+            popup.drawPoints(canvas, popupData, xOffs, popupData.chartX * xScale, minY, yScale);
+            popup.drawPopup(canvas, popupData, xOffs, popupData.chartX * xScale, uiChartWidth * xScale);
         }
     }
 
@@ -219,7 +246,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     }
 
     private void calculateXScale() {
-        if (uiChartWidth == 0) return;
+        if (uiChartWidth == 0 || getWidth() == 0) return;
         float newXScale = getWidth() / (uiChartWidth * range.getSize());
         float newXOffs = newXScale * range.getStart() * uiChartWidth;
 
@@ -388,9 +415,16 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         synchronized (graphs) {
             dates.clear();
             graphs.clear();
+
+            dateLabels.clear();
+            hidingDateLabels.clear();
+
+            popupData = null;
+
             if (uiChart != null) {
                 xValues = uiChart.xValues;
                 minX = uiChart.minX;
+                minY = uiChart.minY;
 
                 uiChartWidth = uiChart.width;
                 for (Graph g : uiChart.graphs) {
@@ -412,9 +446,11 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                     if (textRect.width() > maxTextWidth) maxTextWidth = textRect.width();
                 }
                 dateLabelWidth = maxTextWidth;
+
             } else {
                 xValues = null;
                 minX = 0;
+                minY = 0;
                 uiChartWidth = 0f;
                 yScale = 0f;
             }
@@ -428,6 +464,11 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         if (onGraphVisibilityChangeListener != null) {
             onGraphVisibilityChangeListener.onHiddenGraphChanged(hiddenGraphsIds);
+        }
+
+        if (uiChart != null && pendingClickX != null) {
+            onClick(pendingClickX);
+            pendingClickX = null;
         }
     }
 
@@ -448,6 +489,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             onGraphVisibilityChangeListener.onGraphHidden(id);
         }
         toggleAnimationHelper.hideGraph(id);
+
+        if (popupData != null) {
+            onClick(popupData.clickX);
+        }
     }
 
     public void showGraph(String id) {
@@ -455,6 +500,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             onGraphVisibilityChangeListener.onGraphShown(id);
         }
         toggleAnimationHelper.showGraph(id);
+
+        if (popupData != null) {
+            onClick(popupData.clickX);
+        }
     }
 
     public int getGraphsCount() {
@@ -590,6 +639,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 }
                 if (touchState == TOUCH_STATE_DRAG) {
                     moveChart(touchX - lastTouchX);
+
+                    popupData = null;
                 }
                 lastTouchX = touchX;
 
@@ -746,10 +797,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         }
     }
 
-    private void onClick(float x) {
+    private void onClick(float clickX) {
         if (xValues == null || xValues.length == 0) return;
 
-        float chartX = (xOffs + x) / xScale;
+        float chartX = (xOffs + clickX) / xScale;
 
         // находим ближайщий X
         int nearestXIndex;
@@ -781,12 +832,12 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 if (graph.isVisible() && nearestXIndex < graph.yValues.length) {
                     values.add(new Popup.Value(
                             graph.id,
-                            String.valueOf(graph.yValues[nearestXIndex]),
-                            graph.getColor()));
+                            graph.yValues[nearestXIndex],
+                            graph.color));
                 }
             }
 
-            popupData = new Popup.Data(nearestX, date, values);
+            popupData = new Popup.Data(clickX, nearestX, date, values);
             invalidate();
         }
     }
@@ -799,6 +850,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         SavedState savedState = new SavedState(superState);
         savedState.rangeStart = range.getStart();
         savedState.rangeEnd = range.getEnd();
+        savedState.clickX = popupData != null ? popupData.clickX : null;
         return savedState;
     }
 
@@ -806,6 +858,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     protected void onRestoreInstanceState(Parcelable state) {
         SavedState savedState = (SavedState) state;
         super.onRestoreInstanceState(savedState.getSuperState());
+        pendingClickX = savedState.clickX;
         updateRanges(savedState.rangeStart, savedState.rangeEnd, false);
     }
 
@@ -814,6 +867,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         List<String> hiddenGraphIds;
         float rangeStart;
         float rangeEnd;
+        Float clickX;
 
         SavedState(Parcelable superState) {
             super(superState);
@@ -824,6 +878,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             hiddenGraphIds = in.createStringArrayList();
             rangeStart = in.readFloat();
             rangeEnd = in.readFloat();
+            clickX = (Float) in.readValue(Float.class.getClassLoader());
         }
 
         @Override
@@ -832,6 +887,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             out.writeStringList(hiddenGraphIds);
             out.writeFloat(rangeStart);
             out.writeFloat(rangeEnd);
+            out.writeValue(clickX);
         }
 
         public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {

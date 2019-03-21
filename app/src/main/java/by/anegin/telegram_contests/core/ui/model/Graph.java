@@ -15,6 +15,8 @@ public class Graph {
 
     public final long[] yValues;
 
+    public final int color;
+
     private final float[] points;     // x0, y0, x1, y1, x1, y1, x2, y2, ...
     private final float[] transformedPoints;
 
@@ -33,6 +35,7 @@ public class Graph {
     Graph(String id, long[] yValues, float[] points, final int color) {
         this.id = id;
         this.yValues = yValues;
+        this.color = color;
         this.points = points;
         this.transformedPoints = new float[points.length];
         System.arraycopy(points, 0, transformedPoints, 0, points.length);
@@ -67,10 +70,6 @@ public class Graph {
 
     public boolean isVisible() {
         return state == STATE_VISIBLE || state == STATE_SHOWING;
-    }
-
-    public int getColor() {
-        return paint.getColor();
     }
 
 }

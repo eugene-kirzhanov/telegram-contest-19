@@ -91,8 +91,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     private final ToggleAnimationHelper toggleAnimationHelper = new ToggleAnimationHelper(this, TOGGLE_ANIMATION_DURATION);
 
-    private float minRangeWidth = 0f;
-
     private final Rect textRect = new Rect();
 
     // =======
@@ -200,29 +198,77 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         float newXScale = getWidth() / (uiChartWidth * range.getSize());
         float newXOffs = newXScale * range.getStart() * uiChartWidth;
 
-        float remainingChartWidth = newXScale * uiChartWidth - dateLabelWidth * 2;   // excluding first/last date
-
         int labelsCount = dateLabels.size();
         if (labelsCount == 0) {
-            // создаем исходный набор dateLabels для newXScale
+            // создаем исходный минимальный набор dateLabels для минимального xScale
 
-            // todo переделать на произвольный начальный newXScale
+            // определяем минимальное количество меток (для минимального xScale)
+            float minXScale = getWidth() / uiChartWidth;    // для rangeSize = 1
+            float remainingWidth = minXScale * uiChartWidth - dateLabelWidth * 2;   // excluding first/last date
+            float preSpacing = dateLabelWidth * 0.8f;
+            labelsCount = (int) Math.floor((remainingWidth - preSpacing) / (dateLabelWidth + preSpacing));
+            float labelsSpacing = (remainingWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
 
-            // считаем отступ между датами
-            float preSpacing = dateLabelWidth * 0.8f;        // предполагаемый отступ
-            labelsCount = (int) Math.floor((remainingChartWidth - preSpacing) / (dateLabelWidth + preSpacing));
-            float labelsSpacing = (remainingChartWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
-
+            // добавляем исходный набор меток
             float x = 1.5f * dateLabelWidth + labelsSpacing;
             for (int i = 0; i < labelsCount; i++) {
-                dateLabels.add(new DateLabel(findNearestDate(x / newXScale, dates), x, 1f));
+                dateLabels.add(new DateLabel(findNearestDate(x / minXScale, dates), x, 1f));
                 x += dateLabelWidth + labelsSpacing;
+            }
+
+            if (range.getSize() < 1f) {
+                // пробуем увеличивать расстояние между метками, так чтобы добавились новые метки
+                // пока не достигнем newXScale
+                float spacingToAddLabels = dateLabelWidth * 1.5f;
+                float scale;
+                do {
+                    // определяем scale при увеличении spacing до размера, при котором должны добавится метки
+                    scale = (spacingToAddLabels * (labelsCount + 1) + dateLabelWidth * (labelsCount + 2)) / uiChartWidth;
+
+                    if (scale > newXScale) {
+                        scale = newXScale;
+                    }
+
+                    // перемещаем существующие видимые метки для нового scale
+                    remainingWidth = scale * uiChartWidth - dateLabelWidth * 2;
+                    labelsSpacing = (remainingWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
+                    x = 1.5f * dateLabelWidth + labelsSpacing;
+                    for (DateLabel label : dateLabels) {
+                        label.sx = x;
+                        x += dateLabelWidth + labelsSpacing;
+                    }
+
+                    float distance = dateLabels.get(0).sx - 1.5f * dateLabelWidth;
+                    if (distance >= spacingToAddLabels) {
+                        // вставляем новые метки
+                        List<DateLabel> newLabels = new ArrayList<>(dateLabels.size() * 2 + 1);
+
+                        x = dateLabelWidth + distance / 2;
+
+                        DateLabel newLabel = new DateLabel(findNearestDate(x / scale, dates), x, 1f);
+                        newLabels.add(newLabel);
+
+                        for (DateLabel label : dateLabels) {
+                            newLabels.add(label);
+                            x += dateLabelWidth + distance;
+                            newLabel = new DateLabel(findNearestDate(x / scale, dates), x, 1f);
+                            newLabels.add(newLabel);
+                        }
+
+                        dateLabels.clear();
+                        dateLabels.addAll(newLabels);
+
+                        labelsCount = dateLabels.size();
+                    }
+
+                } while (scale < newXScale);
             }
 
         } else {
 
             // перемещаем существующие видимые метки
-            float labelsSpacing = (remainingChartWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
+            float remainingWidth = newXScale * uiChartWidth - dateLabelWidth * 2;   // excluding first/last date
+            float labelsSpacing = (remainingWidth - dateLabelWidth * labelsCount) / (labelsCount + 1);
             float x = 1.5f * dateLabelWidth + labelsSpacing;
             for (DateLabel label : dateLabels) {
                 label.sx = x;
@@ -241,13 +287,11 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 // расстояние между метками увеличивается и стало больше нужного размера
                 // вставляем метки между существующими, запускаем анимацию появления
 
-                x = dateLabelWidth + distance / 2;
-
                 List<DateLabel> newLabels = new ArrayList<>(dateLabels.size() * 2 + 1);
+                x = dateLabelWidth + distance / 2;
                 DateLabel newLabel = new DateLabel(findNearestDate(x / newXScale, dates), x, 0f);
                 newLabels.add(newLabel);
                 newLabel.fadeIn();
-
                 for (DateLabel label : dateLabels) {
                     newLabels.add(label);
                     x += dateLabelWidth + distance;
@@ -255,7 +299,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                     newLabels.add(newLabel);
                     newLabel.fadeIn();
                 }
-
                 dateLabels.clear();
                 dateLabels.addAll(newLabels);
 
@@ -301,10 +344,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     }
 
     // ==========
-
-    public void setMinRangeWidth(float minRangeWidth) {
-        this.minRangeWidth = minRangeWidth;
-    }
 
     public void setRange(float start, float end, boolean animateYScale) {
         touchState = TOUCH_STATE_IDLE;

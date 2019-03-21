@@ -9,7 +9,7 @@
         <attr name="chart_bottom_line_color" format="color" />
         <attr name="title_text_color" format="color" />
         <attr name="graphs_text_color" format="color" />
-        <attr name="graphs_divider_color" format="color" />
+        <attr name="graphs_divider" format="reference" />
         <attr name="chart_text_color" format="color" />
         <attr name="popup_background" format="reference" />
         <attr name="popup_title_text_color" format="color" />

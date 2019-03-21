@@ -13,7 +13,6 @@
     <color name="chart_bottom_line_light">#e4e4e4</color>
 
     <color name="graphs_text_light">#000</color>
-    <color name="graphs_divider_light">#e1e1e1</color>
 
     <color name="chart_text_color_light">#919ea6</color>
 
@@ -33,7 +32,6 @@
     <color name="chart_bottom_line_dark">#19222c</color>
 
     <color name="graphs_text_dark">#fff</color>
-    <color name="graphs_divider_dark">#0c141f</color>
 
     <color name="chart_text_color_dark">#536675</color>
 

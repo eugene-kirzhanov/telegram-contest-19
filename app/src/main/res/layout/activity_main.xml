@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:divider="@drawable/graphs_divider"
+            android:divider="?attr/graphs_divider"
             android:orientation="vertical"
             android:paddingStart="12dp"
             android:paddingLeft="12dp"

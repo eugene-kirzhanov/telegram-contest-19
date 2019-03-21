@@ -19,6 +19,9 @@
         <item name="graphs_divider_color">@color/graphs_divider_light</item>
 
         <item name="chart_text_color">@color/chart_text_color_light</item>
+
+        <item name="popup_background">@drawable/popup_light</item>
+        <item name="popup_title_text_color">@android:color/black</item>
     </style>
 
     <style name="BaseAppTheme.Dark">
@@ -36,11 +39,14 @@
         <item name="graphs_divider_color">@color/graphs_divider_dark</item>
 
         <item name="chart_text_color">@color/chart_text_color_dark</item>
+
+        <item name="popup_background">@drawable/popup_dark</item>
+        <item name="popup_title_text_color">@android:color/white</item>
     </style>
 
-    <style name="AppThemeLight" parent="BaseAppTheme.Light" />
+    <style name="AppThemeLight" parent="BaseAppTheme.Light"/>
 
-    <style name="AppThemeDark" parent="BaseAppTheme.Dark" />
+    <style name="AppThemeDark" parent="BaseAppTheme.Dark"/>
 
     <style name="WindowAnimationStyle">
         <item name="android:windowEnterAnimation">@android:anim/fade_in</item>

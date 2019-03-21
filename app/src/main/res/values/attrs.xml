@@ -1,34 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <declare-styleable name="AppTheme">
-        <attr name="chart_bg_color" format="color" />
-        <attr name="chart_guideline_color" format="color" />
-        <attr name="minichart_fade_color" format="color" />
-        <attr name="minichart_window_color" format="color" />
-        <attr name="chart_bottom_line_color" format="color" />
-        <attr name="title_text_color" format="color" />
-        <attr name="graphs_text_color" format="color" />
-        <attr name="graphs_divider_color" format="color" />
-        <attr name="chart_text_color" format="color" />
+    <declare-styleable name="BaseAppTheme">
+        <attr name="chart_bg_color" format="color"/>
+        <attr name="chart_guideline_color" format="color"/>
+        <attr name="minichart_fade_color" format="color"/>
+        <attr name="minichart_window_color" format="color"/>
+        <attr name="chart_bottom_line_color" format="color"/>
+        <attr name="title_text_color" format="color"/>
+        <attr name="graphs_text_color" format="color"/>
+        <attr name="graphs_divider_color" format="color"/>
+        <attr name="chart_text_color" format="color"/>
+        <attr name="popup_background" format="reference"/>
+        <attr name="popup_title_text_color" format="color"/>
     </declare-styleable>
 
     <declare-styleable name="ChartView">
-        <attr name="graph_line_width" format="dimension" />
-        <attr name="text_size" format="dimension" />
-        <attr name="text_color" format="color" />
-        <attr name="guide_line_color" format="color" />
-        <attr name="guide_line_width" format="dimension" />
+        <attr name="graph_line_width" format="dimension"/>
+        <attr name="text_size" format="dimension"/>
+        <attr name="text_color" format="color"/>
+        <attr name="guide_line_color" format="color"/>
+        <attr name="guide_line_width" format="dimension"/>
+        <attr name="popup_title_color" format="color"/>
+        <attr name="popup_title_text_size" format="dimension"/>
+        <attr name="popup_spacing" format="dimension"/>
     </declare-styleable>
 
     <declare-styleable name="MiniChartView">
-        <attr name="range_start" format="float" />
-        <attr name="range_end" format="float" />
-        <attr name="fade_color" format="color" />
-        <attr name="window_color" format="color" />
-        <attr name="window_stroke_width_top_bottom" format="dimension" />
-        <attr name="window_stroke_width_left_right" format="dimension" />
-        <attr name="chart_line_width" format="dimension" />
+        <attr name="range_start" format="float"/>
+        <attr name="range_end" format="float"/>
+        <attr name="fade_color" format="color"/>
+        <attr name="window_color" format="color"/>
+        <attr name="window_stroke_width_top_bottom" format="dimension"/>
+        <attr name="window_stroke_width_left_right" format="dimension"/>
+        <attr name="chart_line_width" format="dimension"/>
     </declare-styleable>
 
 </resources>

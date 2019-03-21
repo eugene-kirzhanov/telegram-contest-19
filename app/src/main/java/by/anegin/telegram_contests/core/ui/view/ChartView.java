@@ -8,6 +8,7 @@ import android.graphics.*;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.os.SystemClock;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -19,10 +20,12 @@ import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
+import by.anegin.telegram_contests.core.ui.model.Popup;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.model.UiDate;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
@@ -73,6 +76,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private float xScale = 0f;
     private volatile float yScale = 0f;
 
+    private long[] xValues;
+    private long minX;
     private final List<UiDate> dates = new ArrayList<>();
     private final List<Graph> graphs = new ArrayList<>();
     private float uiChartWidth;
@@ -80,12 +85,14 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private int touchSlop;
     private int minFlingVelocity;
     private int maxFlingVelocity;
+    private int longPressTimeout;
     private VelocityTracker velocityTracker;
     private OverScroller flingScroller;
 
     private int touchState = TOUCH_STATE_IDLE;
     private float downX;
     private float lastTouchX;
+    private long downTime;
 
     private final ScaleAnimationHelper scaleAnimationHelper = new ScaleAnimationHelper(this, AUTOSCALE_ANIMATION_DURATION);
 
@@ -101,6 +108,17 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private float dateLabelWidth = 0f;
 
     // =======
+
+    private Popup popup;
+    private Popup.Data popupData;
+
+    // =======
+
+    // todo сделать view по ширине экрана. учитывать паддинги справа слева для рисования
+
+    // todo определиться с y-положением текста дат
+
+    // todo не рисовать текст выходящий за рамки канваса
 
     public ChartView(Context context) {
         super(context);
@@ -128,6 +146,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         graphStrokeWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
         float textSize = viewAttrs.getDimension(R.styleable.ChartView_text_size, 0f);
         int textColor = viewAttrs.getColor(R.styleable.ChartView_text_color, Color.TRANSPARENT);
+        int popupTitleTextColor = viewAttrs.getColor(R.styleable.ChartView_popup_title_color, Color.TRANSPARENT);
+        float popupTitleTextSize = viewAttrs.getDimension(R.styleable.ChartView_popup_title_text_size, 0f);
+        float popupSpacing = viewAttrs.getDimension(R.styleable.ChartView_popup_spacing, 0f);
         viewAttrs.recycle();
 
         guidelinePaint.setStyle(Paint.Style.STROKE);
@@ -138,6 +159,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         touchSlop = vc.getScaledTouchSlop();
         minFlingVelocity = vc.getScaledMinimumFlingVelocity();
         maxFlingVelocity = vc.getScaledMaximumFlingVelocity();
+        longPressTimeout = ViewConfiguration.getLongPressTimeout();
 
         flingScroller = new OverScroller(context);
 
@@ -146,6 +168,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         paint.setColor(Color.BLUE);
         paint.setStyle(Paint.Style.STROKE);
+
+        popup = new Popup(context, popupTitleTextColor, popupTitleTextSize, popupSpacing);
     }
 
     @Override
@@ -163,28 +187,29 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             canvas.restore();
         }
 
-        float ty = getHeight() - textPaint.ascent() + textPaint.descent();
-
+        float dateLabelsY = getHeight() - textPaint.ascent() + textPaint.descent();
         canvas.save();
         canvas.translate(-xOffs, 0f);
-
         textPaint.setAlpha(255);
         synchronized (dates) {
-            canvas.drawText(dates.get(0).text, 0f, ty, textPaint);
-            canvas.drawText(dates.get(dates.size() - 1).text, uiChartWidth * xScale - dateLabelWidth, ty, textPaint);
+            canvas.drawText(dates.get(0).text, 0f, dateLabelsY, textPaint);
+            canvas.drawText(dates.get(dates.size() - 1).text, uiChartWidth * xScale - dateLabelWidth, dateLabelsY, textPaint);
         }
-
         float halfDateWidth = dateLabelWidth / 2f;
         for (DateLabel label : dateLabels) {
             textPaint.setAlpha((int) (label.alpha * 255));
-            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, ty, textPaint);
+            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, dateLabelsY, textPaint);
         }
         for (DateLabel label : hidingDateLabels.values()) {
             textPaint.setAlpha((int) (label.alpha * 255));
-            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, ty, textPaint);
+            canvas.drawText(label.uiDate.text, label.sx - halfDateWidth, dateLabelsY, textPaint);
         }
-
         canvas.restore();
+
+        Popup.Data popupData = this.popupData;
+        if (popupData != null) {
+            popup.draw(canvas, popupData);
+        }
     }
 
     @Override
@@ -364,6 +389,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             dates.clear();
             graphs.clear();
             if (uiChart != null) {
+                xValues = uiChart.xValues;
+                minX = uiChart.minX;
+
                 uiChartWidth = uiChart.width;
                 for (Graph g : uiChart.graphs) {
                     Graph graph = new Graph(g, graphStrokeWidth);
@@ -385,6 +413,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 }
                 dateLabelWidth = maxTextWidth;
             } else {
+                xValues = null;
+                minX = 0;
                 uiChartWidth = 0f;
                 yScale = 0f;
             }
@@ -529,11 +559,14 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        float touchX = event.getX();
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN: {
-                downX = event.getX();
+                downX = touchX;
                 lastTouchX = downX;
                 touchState = TOUCH_STATE_IDLE;
+
+                downTime = SystemClock.uptimeMillis();
 
                 flingScroller.forceFinished(true);
 
@@ -547,7 +580,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 break;
             }
             case MotionEvent.ACTION_MOVE: {
-                float touchX = event.getX();
                 if (touchState == TOUCH_STATE_IDLE && Math.abs(touchX - downX) > touchSlop) {
                     touchState = TOUCH_STATE_DRAG;
 
@@ -585,6 +617,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 } else {
                     if (velocityTracker != null) {
                         velocityTracker.recycle();
+                    }
+
+                    if (SystemClock.uptimeMillis() - downTime < longPressTimeout) {
+                        onClick(touchX);
                     }
                 }
 
@@ -707,6 +743,51 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 invalidateOnAnimation();
             });
             anim.start();
+        }
+    }
+
+    private void onClick(float x) {
+        if (xValues == null || xValues.length == 0) return;
+
+        float chartX = (xOffs + x) / xScale;
+
+        // находим ближайщий X
+        int nearestXIndex;
+        if (xValues.length == 1) {
+            nearestXIndex = 0;
+        } else {
+            if (chartX <= xValues[0]) {
+                nearestXIndex = 0;
+            } else if (chartX >= xValues[xValues.length - 1]) {
+                nearestXIndex = xValues.length - 1;
+            } else {
+                int i = 0;
+                while (i < xValues.length && chartX > xValues[i]) i++;
+                if (chartX - xValues[i - 1] < xValues[i] - chartX) {
+                    nearestXIndex = i - 1;
+                } else {
+                    nearestXIndex = i;
+                }
+            }
+        }
+        if (nearestXIndex != -1) {
+            long nearestX = xValues[nearestXIndex];
+
+            SimpleDateFormat sdf = new SimpleDateFormat("EEE, MMM dd", Locale.US);
+            String date = sdf.format(new Date(nearestX + minX));
+
+            List<Popup.Value> values = new ArrayList<>();
+            for (Graph graph : graphs) {
+                if (graph.isVisible() && nearestXIndex < graph.yValues.length) {
+                    values.add(new Popup.Value(
+                            graph.id,
+                            String.valueOf(graph.yValues[nearestXIndex]),
+                            graph.getColor()));
+                }
+            }
+
+            popupData = new Popup.Data(nearestX, date, values);
+            invalidate();
         }
     }
 

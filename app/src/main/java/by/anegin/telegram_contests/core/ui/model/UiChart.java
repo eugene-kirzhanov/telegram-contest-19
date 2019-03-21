@@ -12,19 +12,29 @@ import java.util.Locale;
 
 public class UiChart {
 
+    public final long[] xValues;
     public final List<UiDate> dates;
     public final List<Graph> graphs;
     public final long width;
+    public final long minX;
 
     public UiChart(Chart chart) {
         if (chart.x.values.length == 0 || chart.lines.isEmpty()) {
+            xValues = new long[0];
             dates = new ArrayList<>();
             graphs = new ArrayList<>();
             width = 0;
+            minX = 0;
             return;
         }
 
         long[] minMaxX = findMinMax(chart.x.values);
+        minX = minMaxX[0];
+
+        xValues = new long[chart.x.values.length];
+        for (int i = 0; i < xValues.length; i++) {
+            xValues[i] = chart.x.values[i] -minMaxX[0];
+        }
 
         long minY = Long.MAX_VALUE;
         long maxY = Long.MIN_VALUE;
@@ -44,7 +54,7 @@ public class UiChart {
             float[] points = lineToPoints(chart.x.values, line.values);
             if (points.length > 0) {
                 matrix.mapPoints(points);
-                graphs.add(new Graph(line.id, points, line.color));
+                graphs.add(new Graph(line.id, line.values, points, line.color));
             }
         }
 

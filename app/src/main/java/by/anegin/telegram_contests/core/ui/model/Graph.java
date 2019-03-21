@@ -13,6 +13,8 @@ public class Graph {
 
     public final String id;
 
+    public final long[] yValues;
+
     private final float[] points;     // x0, y0, x1, y1, x1, y1, x2, y2, ...
     private final float[] transformedPoints;
 
@@ -23,13 +25,14 @@ public class Graph {
 
     // copy constructor
     public Graph(Graph graph, float strokeWidth) {
-        this(graph.id, graph.points, graph.paint.getColor());
+        this(graph.id, graph.yValues, graph.points, graph.paint.getColor());
         paint.setStrokeWidth(strokeWidth);
         //paint.setStrokeCap(Paint.Cap.ROUND);    // increases draw time up to 1.5-2 times
     }
 
-    Graph(String id, float[] points, final int color) {
+    Graph(String id, long[] yValues, float[] points, final int color) {
         this.id = id;
+        this.yValues = yValues;
         this.points = points;
         this.transformedPoints = new float[points.length];
         System.arraycopy(points, 0, transformedPoints, 0, points.length);
@@ -60,6 +63,14 @@ public class Graph {
             i += 4;
         }
         return maxY;
+    }
+
+    public boolean isVisible() {
+        return state == STATE_VISIBLE || state == STATE_SHOWING;
+    }
+
+    public int getColor() {
+        return paint.getColor();
     }
 
 }

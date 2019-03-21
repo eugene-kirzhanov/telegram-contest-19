@@ -1,10 +1,12 @@
 <resources>
 
-    <style name="BaseAppTheme">
+    <style name="BaseAppTheme" parent="@android:style/Theme.Holo.Light.DarkActionBar" />
+
+    <style name="AppTheme" parent="BaseAppTheme">
         <item name="android:windowAnimationStyle">@style/WindowAnimationStyle</item>
     </style>
 
-    <style name="BaseAppTheme.Light">
+    <style name="AppTheme.Light">
         <item name="android:windowBackground">@color/background_light</item>
 
         <item name="chart_bg_color">@color/chart_background_light</item>
@@ -24,7 +26,7 @@
         <item name="popup_title_text_color">@android:color/black</item>
     </style>
 
-    <style name="BaseAppTheme.Dark">
+    <style name="AppTheme.Dark">
         <item name="android:windowBackground">@color/background_dark</item>
 
         <item name="chart_bg_color">@color/chart_background_dark</item>
@@ -44,9 +46,21 @@
         <item name="popup_title_text_color">@android:color/white</item>
     </style>
 
-    <style name="AppThemeLight" parent="BaseAppTheme.Light" />
+    <style name="AppThemeLight" parent="AppTheme.Light">
+        <item name="android:actionBarStyle">@style/ColoredActionBarLight</item>
+    </style>
 
-    <style name="AppThemeDark" parent="BaseAppTheme.Dark" />
+    <style name="AppThemeDark" parent="AppTheme.Dark">
+        <item name="android:actionBarStyle">@style/ColoredActionBarDark</item>
+    </style>
+
+    <style name="ColoredActionBarLight" parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
+        <item name="android:background">@color/colorPrimary_light</item>
+    </style>
+
+    <style name="ColoredActionBarDark" parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
+        <item name="android:background">@color/colorPrimary_dark</item>
+    </style>
 
     <style name="WindowAnimationStyle">
         <item name="android:windowEnterAnimation">@android:anim/fade_in</item>

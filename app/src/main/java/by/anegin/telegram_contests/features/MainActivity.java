@@ -3,7 +3,6 @@ package by.anegin.telegram_contests.features;
 import android.app.Activity;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,6 +22,7 @@ import by.anegin.telegram_contests.core.ui.ThemeHelper;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.view.ChartView;
 import by.anegin.telegram_contests.core.ui.view.MiniChartView;
+import by.anegin.telegram_contests.core.utils.CompoundButtonHelper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -188,12 +188,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
             checkBoxGraph.setOnCheckedChangeListener(this);
 
-            Drawable drawable;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                drawable = checkBoxGraph.getButtonDrawable();
-            } else {
-                drawable = checkBoxGraph.getBackground();
-            }
+            Drawable drawable = CompoundButtonHelper.getButtonDrawable(checkBoxGraph);
             if (drawable != null) {
                 drawable.setColorFilter(line.color, PorterDuff.Mode.SRC_ATOP);
             }

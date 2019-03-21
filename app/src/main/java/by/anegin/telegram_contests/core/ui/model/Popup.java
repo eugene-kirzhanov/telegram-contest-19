@@ -62,7 +62,7 @@ public class Popup {
 
         circlePaint.setStrokeWidth(circleStrokeWidth);
 
-        TypedArray a = context.getTheme().obtainStyledAttributes(R.style.BaseAppTheme, new int[]{R.attr.popup_background});
+        TypedArray a = context.getTheme().obtainStyledAttributes(R.style.AppTheme, new int[]{R.attr.popup_background});
         int attributeResourceId = a.getResourceId(0, 0);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             bgDrawable = context.getDrawable(attributeResourceId);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <declare-styleable name="BaseAppTheme">
+    <declare-styleable name="AppTheme">
         <attr name="chart_bg_color" format="color" />
         <attr name="chart_guideline_color" format="color" />
         <attr name="minichart_fade_color" format="color" />

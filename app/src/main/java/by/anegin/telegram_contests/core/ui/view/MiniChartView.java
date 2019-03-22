@@ -18,13 +18,18 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewParent;
 import android.view.animation.DecelerateInterpolator;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
-
-import java.util.*;
 
 public class MiniChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
 
@@ -441,13 +446,15 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     // ===============
 
     @Override
-    public float calculateNewScale() {
+    public ScaleAnimationHelper.CalcResult calculateNewScale() {
         float maxHeight = 0f;
         for (Graph graph : graphs) {
             float max = graph.findMaxYInRange(0f, uiChart.width);
             if (max > maxHeight) maxHeight = max;
         }
-        return 0.85f * getHeight() / maxHeight;
+
+        float scale = 0.85f * getHeight() / maxHeight;
+        return new ScaleAnimationHelper.CalcResult(scale, maxHeight);
     }
 
     @Override
@@ -456,7 +463,7 @@ public class MiniChartView extends View implements ScaleAnimationHelper.Callback
     }
 
     @Override
-    public void onScaleUpdated(float scale) {
+    public void onScaleUpdated(float scale, ScaleAnimationHelper.CalcResult calcResult) {
         yScale = scale;
 
         transformMatrix.reset();

@@ -4,7 +4,11 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -12,11 +16,26 @@ import android.os.SystemClock;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
-import android.view.*;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
+import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewParent;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.OverScroller;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
 import by.anegin.telegram_contests.R;
+import by.anegin.telegram_contests.core.ui.Grid;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
@@ -24,9 +43,6 @@ import by.anegin.telegram_contests.core.ui.model.Popup;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.model.UiDate;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
-
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 public class ChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
 
@@ -69,6 +85,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     private final Matrix graphMatrix = new Matrix();
 
     private float gridLineWidth = 0f;
+    private int gridLineColor;
+
+    private float textSize;
+    private int textColor;
 
     private float graphStrokeWidth = 0f;
 
@@ -141,10 +161,10 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         TypedArray viewAttrs = context.obtainStyledAttributes(attrs, R.styleable.ChartView, defStyleAttr, 0);
         gridLineWidth = viewAttrs.getDimension(R.styleable.ChartView_grid_line_width, 0f);
-        int gridLineColor = viewAttrs.getColor(R.styleable.ChartView_grid_line_color, Color.TRANSPARENT);
+        gridLineColor = viewAttrs.getColor(R.styleable.ChartView_grid_line_color, Color.TRANSPARENT);
         graphStrokeWidth = viewAttrs.getDimension(R.styleable.ChartView_graph_line_width, defaultGraphLineWidth);
-        float textSize = viewAttrs.getDimension(R.styleable.ChartView_text_size, 0f);
-        int textColor = viewAttrs.getColor(R.styleable.ChartView_text_color, Color.TRANSPARENT);
+        textSize = viewAttrs.getDimension(R.styleable.ChartView_text_size, 0f);
+        textColor = viewAttrs.getColor(R.styleable.ChartView_text_color, Color.TRANSPARENT);
         int popupTitleTextColor = viewAttrs.getColor(R.styleable.ChartView_popup_title_color, Color.TRANSPARENT);
         float popupTitleTextSize = viewAttrs.getDimension(R.styleable.ChartView_popup_title_text_size, 0f);
         float popupValueTextSize = viewAttrs.getDimension(R.styleable.ChartView_popup_value_text_size, 0f);
@@ -181,12 +201,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     @Override
     public void onDraw(Canvas canvas) {
         // horizontal grid lines
-        float cellHeight = getHeight() / 5.5f;
-        gridLinePaint.setStrokeWidth(gridLineWidth);
-        for (int i = 1; i <= 5; i++) {
-            float y = getHeight() - cellHeight * i;
-            canvas.drawLine(0f, y, getWidth(), y, gridLinePaint);
-        }
         gridLinePaint.setStrokeWidth(gridLineWidth * 2f);
         canvas.drawLine(0f, getHeight(), getWidth(), getHeight(), gridLinePaint);
 
@@ -221,6 +235,13 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         }
 
         canvas.restore();
+
+        // y grids and labels
+        synchronized (grids) {
+            for (Grid grid : grids) {
+                grid.draw(canvas, yScale);
+            }
+        }
 
         // charts
         synchronized (graphs) {
@@ -531,14 +552,15 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     }
 
     @Override
-    public float calculateNewScale() {
+    public ScaleAnimationHelper.CalcResult calculateNewScale() {
         float uiChartWidth;
         List<Graph> graphs;
         synchronized (this.graphs) {
             uiChartWidth = this.uiChartWidth;
             graphs = new ArrayList<>(this.graphs);
         }
-        if (uiChartWidth == 0f || graphs.isEmpty()) return yScale;
+        if (uiChartWidth == 0f || graphs.isEmpty())
+            return new ScaleAnimationHelper.CalcResult(yScale, 0f);
 
         float startX = uiChartWidth * range.getStart();
         float endX = uiChartWidth * range.getEnd();
@@ -549,7 +571,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             if (max > maxY) maxY = max;
         }
 
-        return (float) getHeight() / maxY;
+        float scale = (float) getHeight() / maxY;
+
+        return new ScaleAnimationHelper.CalcResult(scale, maxY);
     }
 
     @Override
@@ -558,7 +582,8 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
     }
 
     @Override
-    public void onScaleUpdated(float scale) {
+    public void onScaleUpdated(float scale, ScaleAnimationHelper.CalcResult calcResult) {
+        if (scale == 0f) return;
         yScale = scale;
 
         graphMatrix.reset();
@@ -571,10 +596,22 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             }
         }
 
+        synchronized (grids) {
+            if (grids.isEmpty()) {
+                Grid grid = new Grid(yScale, calcResult.targetScale, minY, calcResult.maxY,
+                        gridLineColor, gridLineWidth, textColor, textSize);
+                grids.add(grid);
+            }
+        }
+
         invalidateOnAnimation();
     }
 
-    private void invalidateOnAnimation() {
+    private final List<Grid> grids = new ArrayList<>();
+
+    // ==================
+
+    public void invalidateOnAnimation() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             postInvalidateOnAnimation();
         } else {

@@ -12,12 +12,22 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ScaleAnimationHelper {
 
+    public static class CalcResult {
+        public final float targetScale;
+        public final float maxY;
+
+        public CalcResult(float targetScale, float maxY) {
+            this.targetScale = targetScale;
+            this.maxY = maxY;
+        }
+    }
+
     public interface Callback {
-        float calculateNewScale();
+        CalcResult calculateNewScale();
 
         float getCurrentScale();
 
-        void onScaleUpdated(float scale);
+        void onScaleUpdated(float scale, CalcResult calcResult);
     }
 
     private final Callback callback;
@@ -46,36 +56,37 @@ public class ScaleAnimationHelper {
         }
 
         scaleCalculationTask = scaleCalculateExecutor.submit(() -> {
-            float calculatedScale = callback.calculateNewScale();
+            CalcResult calcResult = callback.calculateNewScale();
             if (lastCalculateGeneration.get() == calculateGeneration) {
                 uiHandler.post(() -> {
                     if (animateYScale) {
-                        animateYScale(callback.getCurrentScale(), calculatedScale);
+                        animateYScale(calcResult);
                     } else {
-                        callback.onScaleUpdated(calculatedScale);
+                        callback.onScaleUpdated(calcResult.targetScale, calcResult);
                     }
                 });
             }
         });
     }
 
-    private void animateYScale(float from, float to) {
+    private void animateYScale(CalcResult calcResult) {
+        float fromScale = callback.getCurrentScale();
         if (scaleAnimator != null && scaleAnimator.isRunning()) {
-            if (scaleAnimTo != to) {
+            if (scaleAnimTo != calcResult.targetScale) {
                 scaleAnimator.cancel();
                 scaleAnimator = null;
             } else {
                 return;
             }
         }
-        scaleAnimTo = to;
+        scaleAnimTo = calcResult.targetScale;
 
-        scaleAnimator = ValueAnimator.ofFloat(from, to);
+        scaleAnimator = ValueAnimator.ofFloat(fromScale, calcResult.targetScale);
         scaleAnimator.setInterpolator(new LinearInterpolator());
         scaleAnimator.setDuration(animateDuration);
         scaleAnimator.addUpdateListener(animation -> {
             float scale = (float) animation.getAnimatedValue();
-            callback.onScaleUpdated(scale);
+            callback.onScaleUpdated(scale, calcResult);
         });
         scaleAnimator.start();
     }

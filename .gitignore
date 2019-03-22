@@ -4,3 +4,5 @@
 /captures/
 /local.properties
 *.iml
+keystore.jks
+keystore.properties

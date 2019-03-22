@@ -9,6 +9,8 @@ import java.lang.reflect.Field;
 
 public class CompoundButtonHelper {
 
+    private static final String TAG = CompoundButtonHelper.class.getSimpleName();
+
     private static Field sButtonDrawableField;
     private static boolean sButtonDrawableFieldFetched;
 
@@ -30,7 +32,7 @@ public class CompoundButtonHelper {
                 sButtonDrawableField = CompoundButton.class.getDeclaredField("mButtonDrawable");
                 sButtonDrawableField.setAccessible(true);
             } catch (Throwable e) {
-                Log.i("ABC", "Failed to retrieve mButtonDrawable field", e);
+                Log.i(TAG, "Failed to retrieve mButtonDrawable field", e);
             }
             sButtonDrawableFieldFetched = true;
         }
@@ -38,7 +40,7 @@ public class CompoundButtonHelper {
             try {
                 return (Drawable) sButtonDrawableField.get(compoundButton);
             } catch (Throwable e2) {
-                Log.i("ABC", "Failed to get button drawable via reflection", e2);
+                Log.i(TAG, "Failed to get button drawable via reflection", e2);
                 sButtonDrawableField = null;
             }
         }

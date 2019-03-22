@@ -14,7 +14,7 @@ public class Grid {
         void onFadedOut(Grid grid);
     }
 
-    private static final float GAPS_COUNT = 5f;
+    private static final float GAPS_COUNT = 5.3f;
     private static final int LINES_COUNT = (int) Math.floor(GAPS_COUNT);
 
     private final Paint linePaint = new Paint();
@@ -29,11 +29,11 @@ public class Grid {
 
     private boolean hiding = false;
 
-    public Grid(float fromYScale, float targetYScale, float minY, float maxY, int lineColor, float lineWidth, int textColor, float textSize) {
+    public Grid(float fromYScale, float targetYScale, float maxY, int lineColor, float lineWidth, int textColor, float textSize) {
         this.fromYScale = fromYScale;
         this.targetYScale = targetYScale;
 
-        float gapHeight = (maxY - minY) / GAPS_COUNT;
+        float gapHeight = maxY / GAPS_COUNT;
 
         float y = gapHeight;
         for (int i = 0; i < LINES_COUNT; i++) {
@@ -88,6 +88,8 @@ public class Grid {
             String yString = String.valueOf((int) level);
             canvas.drawText(yString, 0f, y - textPaint.descent(), textPaint);
         }
+
+        canvas.drawText("0", 0f, canvas.getHeight() - textPaint.descent(), textPaint);
     }
 
 }

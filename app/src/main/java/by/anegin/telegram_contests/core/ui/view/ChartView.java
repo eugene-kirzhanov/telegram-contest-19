@@ -36,13 +36,13 @@ import java.util.Map;
 import java.util.Set;
 
 import by.anegin.telegram_contests.R;
-import by.anegin.telegram_contests.core.ui.objects.Grid;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
-import by.anegin.telegram_contests.core.ui.objects.Graph;
-import by.anegin.telegram_contests.core.ui.objects.Popup;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.model.UiDate;
+import by.anegin.telegram_contests.core.ui.objects.Graph;
+import by.anegin.telegram_contests.core.ui.objects.Grid;
+import by.anegin.telegram_contests.core.ui.objects.Popup;
 import by.anegin.telegram_contests.core.utils.AtomicRange;
 
 public class ChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {
@@ -610,20 +610,20 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 lastGrid.fadeOut(this, hidingGrids::remove);
                 lastGrid = null;
 
-                lastGrid = new Grid(scale, calcResult.targetScale, minY, calcResult.maxY,
+                lastGrid = new Grid(scale, calcResult.targetScale, calcResult.maxY,
                         gridLineColor, gridLineWidth, textColor, textSize);
                 grids.add(lastGrid);
             }
 
         } else {
-            lastGrid = new Grid(scale, calcResult.targetScale, minY, calcResult.maxY,
+            lastGrid = new Grid(scale, calcResult.targetScale, calcResult.maxY,
                     gridLineColor, gridLineWidth, textColor, textSize);
             grids.add(lastGrid);
         }
 
         synchronized (grids) {
             if (grids.isEmpty()) {
-                Grid grid = new Grid(yScale, calcResult.targetScale, minY, calcResult.maxY,
+                Grid grid = new Grid(yScale, calcResult.targetScale, calcResult.maxY,
                         gridLineColor, gridLineWidth, textColor, textSize);
                 grids.add(grid);
             }

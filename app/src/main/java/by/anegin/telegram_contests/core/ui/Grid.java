@@ -2,7 +2,6 @@ package by.anegin.telegram_contests.core.ui;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.text.TextPaint;
 
 public class Grid {
@@ -12,8 +11,6 @@ public class Grid {
 
     private final Paint linePaint = new Paint();
     private final TextPaint textPaint = new TextPaint();
-
-    private final Rect textRect = new Rect();
 
     private final float[] levels = new float[LINES_COUNT];
 
@@ -53,7 +50,6 @@ public class Grid {
             canvas.drawLine(0f, y, canvas.getWidth(), y, linePaint);
 
             String yString = String.valueOf((int) level);
-            textPaint.getTextBounds(yString, 0, yString.length(), textRect);
             canvas.drawText(yString, 0f, y - textPaint.descent(), textPaint);
         }
     }

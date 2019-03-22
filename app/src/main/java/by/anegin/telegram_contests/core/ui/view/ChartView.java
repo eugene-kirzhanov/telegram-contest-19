@@ -29,13 +29,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 import by.anegin.telegram_contests.R;
-import by.anegin.telegram_contests.core.ui.Grid;
+import by.anegin.telegram_contests.core.ui.Grid2;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.model.Graph;
@@ -238,7 +239,12 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         // y grids and labels
         synchronized (grids) {
-            for (Grid grid : grids) {
+            for (Grid2 grid : grids) {
+                grid.draw(canvas, yScale);
+            }
+        }
+        synchronized (hidingGrids) {
+            for (Grid2 grid : hidingGrids) {
                 grid.draw(canvas, yScale);
             }
         }
@@ -596,9 +602,28 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             }
         }
 
+        if (lastGrid != null) {
+
+            if (lastGrid.targetYScale != calcResult.targetScale) {
+                grids.remove(lastGrid);
+                hidingGrids.add(lastGrid);
+                lastGrid.fadeOut(this, hidingGrids::remove);
+                lastGrid = null;
+
+                lastGrid = new Grid2(scale, calcResult.targetScale, minY, calcResult.maxY,
+                        gridLineColor, gridLineWidth, textColor, textSize);
+                grids.add(lastGrid);
+            }
+
+        } else {
+            lastGrid = new Grid2(scale, calcResult.targetScale, minY, calcResult.maxY,
+                    gridLineColor, gridLineWidth, textColor, textSize);
+            grids.add(lastGrid);
+        }
+
         synchronized (grids) {
             if (grids.isEmpty()) {
-                Grid grid = new Grid(yScale, calcResult.targetScale, minY, calcResult.maxY,
+                Grid2 grid = new Grid2(yScale, calcResult.targetScale, minY, calcResult.maxY,
                         gridLineColor, gridLineWidth, textColor, textSize);
                 grids.add(grid);
             }
@@ -607,7 +632,9 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
         invalidateOnAnimation();
     }
 
-    private final List<Grid> grids = new ArrayList<>();
+    private Grid2 lastGrid;
+    private final List<Grid2> grids = new ArrayList<>();
+    private final Set<Grid2> hidingGrids = new HashSet<>();
 
     // ==================
 

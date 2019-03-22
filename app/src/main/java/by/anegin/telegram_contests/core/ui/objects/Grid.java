@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.ui;
+package by.anegin.telegram_contests.core.ui.objects;
 
 import android.animation.ValueAnimator;
 import android.graphics.Canvas;
@@ -8,10 +8,10 @@ import android.view.animation.AccelerateInterpolator;
 
 import by.anegin.telegram_contests.core.ui.view.ChartView;
 
-public class Grid2 {
+public class Grid {
 
     public interface OnFadedOutListener {
-        void onFadedOut(Grid2 grid);
+        void onFadedOut(Grid grid);
     }
 
     private static final float GAPS_COUNT = 5f;
@@ -27,9 +27,9 @@ public class Grid2 {
 
     private float alpha;
 
-    public boolean hiding = false;
+    private boolean hiding = false;
 
-    public Grid2(float fromYScale, float targetYScale, float minY, float maxY, int lineColor, float lineWidth, int textColor, float textSize) {
+    public Grid(float fromYScale, float targetYScale, float minY, float maxY, int lineColor, float lineWidth, int textColor, float textSize) {
         this.fromYScale = fromYScale;
         this.targetYScale = targetYScale;
 

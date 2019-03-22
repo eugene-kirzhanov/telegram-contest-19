@@ -18,7 +18,7 @@ import by.anegin.telegram_contests.core.data.model.Chart;
 import by.anegin.telegram_contests.core.data.model.Column;
 import by.anegin.telegram_contests.core.data.model.Data;
 import by.anegin.telegram_contests.core.di.AppComponent;
-import by.anegin.telegram_contests.core.ui.ThemeHelper;
+import by.anegin.telegram_contests.core.utils.ThemeHelper;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.view.ChartView;
 import by.anegin.telegram_contests.core.ui.view.MiniChartView;

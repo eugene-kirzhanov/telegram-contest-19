@@ -6,7 +6,7 @@ import android.animation.ValueAnimator;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
-import by.anegin.telegram_contests.core.ui.model.Graph;
+import by.anegin.telegram_contests.core.ui.objects.Graph;
 
 import java.util.HashMap;
 import java.util.Map;

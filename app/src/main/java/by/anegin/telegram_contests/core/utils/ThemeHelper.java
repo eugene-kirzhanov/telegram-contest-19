@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.ui;
+package by.anegin.telegram_contests.core.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;

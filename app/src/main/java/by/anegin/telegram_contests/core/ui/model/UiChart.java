@@ -3,6 +3,7 @@ package by.anegin.telegram_contests.core.ui.model;
 import android.graphics.Matrix;
 import by.anegin.telegram_contests.core.data.model.Chart;
 import by.anegin.telegram_contests.core.data.model.Column;
+import by.anegin.telegram_contests.core.ui.objects.Graph;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;

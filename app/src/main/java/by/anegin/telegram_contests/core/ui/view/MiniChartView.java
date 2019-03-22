@@ -28,7 +28,7 @@ import java.util.Set;
 import by.anegin.telegram_contests.R;
 import by.anegin.telegram_contests.core.ui.ScaleAnimationHelper;
 import by.anegin.telegram_contests.core.ui.ToggleAnimationHelper;
-import by.anegin.telegram_contests.core.ui.model.Graph;
+import by.anegin.telegram_contests.core.ui.objects.Graph;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 
 public class MiniChartView extends View implements ScaleAnimationHelper.Callback, ToggleAnimationHelper.Callback {

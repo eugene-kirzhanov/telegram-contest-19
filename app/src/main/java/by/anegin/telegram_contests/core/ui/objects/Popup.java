@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.ui.model;
+package by.anegin.telegram_contests.core.ui.objects;
 
 import android.content.Context;
 import android.content.res.TypedArray;

@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.ui.model;
+package by.anegin.telegram_contests.core.ui.objects;
 
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -32,7 +32,7 @@ public class Graph {
         //paint.setStrokeCap(Paint.Cap.ROUND);    // increases draw time up to 1.5-2 times
     }
 
-    Graph(String id, long[] yValues, float[] points, final int color) {
+    public Graph(String id, long[] yValues, float[] points, final int color) {
         this.id = id;
         this.yValues = yValues;
         this.color = color;

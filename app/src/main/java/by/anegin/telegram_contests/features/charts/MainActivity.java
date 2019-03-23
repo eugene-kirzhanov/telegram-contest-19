@@ -23,16 +23,16 @@ import java.util.concurrent.Executors;
 
 import by.anegin.telegram_contests.ChartsApp;
 import by.anegin.telegram_contests.R;
-import by.anegin.telegram_contests.data.DataRepository;
-import by.anegin.telegram_contests.data.model.Chart;
-import by.anegin.telegram_contests.data.model.Column;
-import by.anegin.telegram_contests.data.model.Data;
 import by.anegin.telegram_contests.core.di.AppComponent;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.view.ChartView;
 import by.anegin.telegram_contests.core.ui.view.MiniChartView;
 import by.anegin.telegram_contests.core.utils.CompoundButtonHelper;
 import by.anegin.telegram_contests.core.utils.ThemeHelper;
+import by.anegin.telegram_contests.data.DataRepository;
+import by.anegin.telegram_contests.data.model.Chart;
+import by.anegin.telegram_contests.data.model.Column;
+import by.anegin.telegram_contests.data.model.Data;
 
 public class MainActivity extends Activity implements CompoundButton.OnCheckedChangeListener {
 
@@ -66,6 +66,8 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
         setTheme(theme);
 
         setContentView(R.layout.activity_main);
+
+        setTitle(R.string.statistics);
 
         chartView = findViewById(R.id.chartView);
         textChartName = findViewById(R.id.textChartName);
@@ -111,12 +113,18 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
         Data data = this.data;
         int chartsCount = (data != null && data.charts != null) ? data.charts.size() : 0;
         menu.removeGroup(R.id.action_group_chart_selection);
+        MenuItem checkedItem = null;
         for (int i = 0; i < chartsCount; i++) {
             MenuItem item = menu.add(R.id.action_group_chart_selection,
                     MENUITEM_ID_FIRST + i, i,
                     getString(R.string.chart, String.valueOf(i + 1)));
-            item.setCheckable(true);
-            item.setChecked(currentChartIndex == i);
+            if (currentChartIndex == i) {
+                checkedItem = item;
+            }
+        }
+        menu.setGroupCheckable(R.id.action_group_chart_selection, true, true);
+        if (checkedItem != null) {
+            checkedItem.setChecked(true);
         }
         return true;
     }

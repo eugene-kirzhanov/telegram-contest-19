@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Telegram-Contests</string>
+    <string name="app_name">TG-Contest</string>
     <string name="statistics">Statistics</string>
     <string name="chart">Chart %s</string>
     <string name="action_toggle_theme">Toggle theme</string>

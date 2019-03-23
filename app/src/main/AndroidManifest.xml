@@ -15,7 +15,7 @@
 
         <activity
             android:name=".features.charts.MainActivity"
-            android:label="@string/statistics"
+            android:label="@string/app_name"
             android:theme="@style/AppThemeLight">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

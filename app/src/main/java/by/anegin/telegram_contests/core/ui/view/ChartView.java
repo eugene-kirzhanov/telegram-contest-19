@@ -904,7 +904,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             for (Graph graph : graphs) {
                 if (graph.isVisible() && nearestXIndex < graph.yValues.length) {
                     values.add(new Popup.Value(
-                            graph.id,
+                            graph.name,
                             graph.yValues[nearestXIndex],
                             graph.color));
                 }

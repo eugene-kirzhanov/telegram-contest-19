@@ -12,6 +12,7 @@ public class Graph {
     public static final int STATE_HIDING = 4;
 
     public final String id;
+    public final String name;
 
     public final long[] yValues;
 
@@ -27,13 +28,14 @@ public class Graph {
 
     // copy constructor
     public Graph(Graph graph, float strokeWidth) {
-        this(graph.id, graph.yValues, graph.points, graph.paint.getColor());
+        this(graph.id, graph.name, graph.yValues, graph.points, graph.paint.getColor());
         paint.setStrokeWidth(strokeWidth);
         //paint.setStrokeCap(Paint.Cap.ROUND);    // increases draw time up to 1.5-2 times
     }
 
-    public Graph(String id, long[] yValues, float[] points, final int color) {
+    public Graph(String id, String name, long[] yValues, float[] points, final int color) {
         this.id = id;
+        this.name = name;
         this.yValues = yValues;
         this.color = color;
         this.points = points;

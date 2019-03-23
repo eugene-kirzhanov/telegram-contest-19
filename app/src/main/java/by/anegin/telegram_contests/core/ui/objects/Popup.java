@@ -86,7 +86,7 @@ public class Popup {
             if (textRect.width() > columnWidth) columnWidth = textRect.width();
 
             valuesTextPaint.setFakeBoldText(false);
-            valuesTextPaint.getTextBounds(value.id, 0, value.id.length(), textRect);
+            valuesTextPaint.getTextBounds(value.name, 0, value.name.length(), textRect);
             if (textRect.width() > columnWidth) columnWidth = textRect.width();
 
             column++;
@@ -149,9 +149,9 @@ public class Popup {
             canvas.drawText(value.stringValue, tx, ty - valuesTextPaint.ascent(), valuesTextPaint);
 
             valuesTextPaint.setFakeBoldText(false);
-            valuesTextPaint.getTextBounds(value.id, 0, value.id.length(), textRect);
+            valuesTextPaint.getTextBounds(value.name, 0, value.name.length(), textRect);
             tx = (popupWidth - textRect.width()) / 2f;
-            canvas.drawText(value.id, tx, ty + valuesTextLineHeight - valuesTextPaint.ascent(), valuesTextPaint);
+            canvas.drawText(value.name, tx, ty + valuesTextLineHeight - valuesTextPaint.ascent(), valuesTextPaint);
 
         } else {
 
@@ -167,8 +167,8 @@ public class Popup {
                 canvas.drawText(value.stringValue, tx + (columnWidth - textRect.width()) / 2f, ty - valuesTextPaint.ascent(), valuesTextPaint);
 
                 valuesTextPaint.setFakeBoldText(false);
-                valuesTextPaint.getTextBounds(value.id, 0, value.id.length(), textRect);
-                canvas.drawText(value.id, tx + (columnWidth - textRect.width()) / 2f, ty + valuesTextLineHeight - valuesTextPaint.ascent(), valuesTextPaint);
+                valuesTextPaint.getTextBounds(value.name, 0, value.name.length(), textRect);
+                canvas.drawText(value.name, tx + (columnWidth - textRect.width()) / 2f, ty + valuesTextLineHeight - valuesTextPaint.ascent(), valuesTextPaint);
 
                 column++;
                 if (column == POPUP_COLUMNS_COUNT) {
@@ -221,13 +221,13 @@ public class Popup {
     }
 
     public static class Value {
-        private final String id;
+        private final String name;
         private final long value;
         private final String stringValue;
         private final int color;
 
-        public Value(String id, long value, int color) {
-            this.id = id;
+        public Value(String name, long value, int color) {
+            this.name = name;
             this.value = value;
             this.stringValue = String.valueOf(value);
             this.color = color;

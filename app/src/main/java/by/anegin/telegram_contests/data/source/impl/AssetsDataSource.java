@@ -1,11 +1,11 @@
-package by.anegin.telegram_contests.core.data.source.impl;
+package by.anegin.telegram_contests.data.source.impl;
 
 import android.content.Context;
 import android.graphics.Color;
-import by.anegin.telegram_contests.core.data.model.Chart;
-import by.anegin.telegram_contests.core.data.model.Column;
-import by.anegin.telegram_contests.core.data.model.Data;
-import by.anegin.telegram_contests.core.data.source.DataSource;
+import by.anegin.telegram_contests.data.model.Chart;
+import by.anegin.telegram_contests.data.model.Column;
+import by.anegin.telegram_contests.data.model.Data;
+import by.anegin.telegram_contests.data.source.DataSource;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

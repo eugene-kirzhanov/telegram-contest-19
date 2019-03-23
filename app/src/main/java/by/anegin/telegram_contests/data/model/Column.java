@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.data.model;
+package by.anegin.telegram_contests.data.model;
 
 public class Column {
 

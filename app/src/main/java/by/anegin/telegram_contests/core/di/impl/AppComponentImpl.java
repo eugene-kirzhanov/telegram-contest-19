@@ -1,9 +1,9 @@
 package by.anegin.telegram_contests.core.di.impl;
 
 import android.content.Context;
-import by.anegin.telegram_contests.core.data.DataRepository;
-import by.anegin.telegram_contests.core.data.source.DataSource;
-import by.anegin.telegram_contests.core.data.source.impl.AssetsDataSource;
+import by.anegin.telegram_contests.data.DataRepository;
+import by.anegin.telegram_contests.data.source.DataSource;
+import by.anegin.telegram_contests.data.source.impl.AssetsDataSource;
 import by.anegin.telegram_contests.core.di.AppComponent;
 import by.anegin.telegram_contests.core.utils.ThemeHelper;
 

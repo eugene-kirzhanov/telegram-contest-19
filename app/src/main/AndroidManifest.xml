@@ -14,7 +14,7 @@
         tools:ignore="GoogleAppIndexingWarning">
 
         <activity
-            android:name=".features.MainActivity"
+            android:name=".features.charts.MainActivity"
             android:label="@string/statistics"
             android:theme="@style/AppThemeLight">
             <intent-filter>

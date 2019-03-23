@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.core.data.model;
+package by.anegin.telegram_contests.data.model;
 
 import java.util.List;
 

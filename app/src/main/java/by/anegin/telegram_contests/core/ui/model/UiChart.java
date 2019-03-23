@@ -8,8 +8,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import by.anegin.telegram_contests.core.data.model.Chart;
-import by.anegin.telegram_contests.core.data.model.Column;
+import by.anegin.telegram_contests.data.model.Chart;
+import by.anegin.telegram_contests.data.model.Column;
 import by.anegin.telegram_contests.core.ui.objects.Graph;
 
 public class UiChart {

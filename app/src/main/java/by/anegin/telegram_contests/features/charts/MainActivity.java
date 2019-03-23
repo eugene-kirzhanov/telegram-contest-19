@@ -1,4 +1,4 @@
-package by.anegin.telegram_contests.features;
+package by.anegin.telegram_contests.features.charts;
 
 import android.app.Activity;
 import android.graphics.PorterDuff;
@@ -23,10 +23,10 @@ import java.util.concurrent.Executors;
 
 import by.anegin.telegram_contests.ChartsApp;
 import by.anegin.telegram_contests.R;
-import by.anegin.telegram_contests.core.data.DataRepository;
-import by.anegin.telegram_contests.core.data.model.Chart;
-import by.anegin.telegram_contests.core.data.model.Column;
-import by.anegin.telegram_contests.core.data.model.Data;
+import by.anegin.telegram_contests.data.DataRepository;
+import by.anegin.telegram_contests.data.model.Chart;
+import by.anegin.telegram_contests.data.model.Column;
+import by.anegin.telegram_contests.data.model.Data;
 import by.anegin.telegram_contests.core.di.AppComponent;
 import by.anegin.telegram_contests.core.ui.model.UiChart;
 import by.anegin.telegram_contests.core.ui.view.ChartView;

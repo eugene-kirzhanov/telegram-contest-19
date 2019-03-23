@@ -1,7 +1,7 @@
-package by.anegin.telegram_contests.core.data;
+package by.anegin.telegram_contests.data;
 
-import by.anegin.telegram_contests.core.data.model.Data;
-import by.anegin.telegram_contests.core.data.source.DataSource;
+import by.anegin.telegram_contests.data.model.Data;
+import by.anegin.telegram_contests.data.source.DataSource;
 
 import java.io.IOException;
 

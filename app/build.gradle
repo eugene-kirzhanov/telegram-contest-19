@@ -7,13 +7,13 @@ android {
     compileSdkVersion 28
 
     defaultConfig {
-        applicationId "by.anegin.telegram_contests"
+        applicationId "by.anegin.tgcontest"
 
         minSdkVersion 14
         targetSdkVersion 28
 
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0.00000"
     }
 
     signingConfigs {

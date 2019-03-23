@@ -182,12 +182,12 @@ public class Popup {
         canvas.restore();
     }
 
-    public void drawPoints(Canvas canvas, Data data, float xOffs, float x, long minY, float yScale) {
+    public void drawPoints(Canvas canvas, Data data, float xOffs, float x, float yScale) {
         canvas.save();
         canvas.translate(-xOffs, 0f);
         for (Value value : data.values) {
 
-            float y = canvas.getHeight() - (value.value - minY) * yScale;
+            float y = canvas.getHeight() - value.value * yScale;
 
             circlePaint.setStyle(Paint.Style.FILL);
             circlePaint.setColor(circleInnerColor);

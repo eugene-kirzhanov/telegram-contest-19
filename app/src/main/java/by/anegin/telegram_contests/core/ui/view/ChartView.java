@@ -101,7 +101,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
     private long[] xValues;
     private long minX;
-    private long minY;
     private final List<UiDate> dates = new ArrayList<>();
     private final List<Graph> graphs = new ArrayList<>();
     private float uiChartWidth;
@@ -261,7 +260,7 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         // popup
         if (popupData != null) {
-            popup.drawPoints(canvas, popupData, xOffs, popupData.chartX * xScale, minY, yScale);
+            popup.drawPoints(canvas, popupData, xOffs, popupData.chartX * xScale, yScale);
             popup.drawPopup(canvas, popupData, xOffs, popupData.chartX * xScale, uiChartWidth * xScale);
         }
     }
@@ -451,7 +450,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             if (uiChart != null) {
                 xValues = uiChart.xValues;
                 minX = uiChart.minX;
-                minY = uiChart.minY;
 
                 uiChartWidth = uiChart.width;
                 for (Graph g : uiChart.graphs) {
@@ -477,7 +475,6 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
             } else {
                 xValues = null;
                 minX = 0;
-                minY = 0;
                 uiChartWidth = 0f;
                 yScale = 0f;
             }

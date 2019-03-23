@@ -16,7 +16,7 @@ public class Grid {
         void onFadedOut(Grid grid);
     }
 
-    private static final float GAPS_COUNT = 5.3f;
+    private static final float GAPS_COUNT = 5.55f;
     private static final int LINES_COUNT = (int) Math.floor(GAPS_COUNT);
 
     private final DecimalFormat decimalFormat = new DecimalFormat();

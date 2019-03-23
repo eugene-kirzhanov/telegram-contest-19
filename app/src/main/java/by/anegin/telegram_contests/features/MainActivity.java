@@ -10,19 +10,8 @@ import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
-import by.anegin.telegram_contests.ChartsApp;
-import by.anegin.telegram_contests.R;
-import by.anegin.telegram_contests.core.data.DataRepository;
-import by.anegin.telegram_contests.core.data.model.Chart;
-import by.anegin.telegram_contests.core.data.model.Column;
-import by.anegin.telegram_contests.core.data.model.Data;
-import by.anegin.telegram_contests.core.di.AppComponent;
-import by.anegin.telegram_contests.core.utils.ThemeHelper;
-import by.anegin.telegram_contests.core.ui.model.UiChart;
-import by.anegin.telegram_contests.core.ui.view.ChartView;
-import by.anegin.telegram_contests.core.ui.view.MiniChartView;
-import by.anegin.telegram_contests.core.utils.CompoundButtonHelper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +20,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
+import by.anegin.telegram_contests.ChartsApp;
+import by.anegin.telegram_contests.R;
+import by.anegin.telegram_contests.core.data.DataRepository;
+import by.anegin.telegram_contests.core.data.model.Chart;
+import by.anegin.telegram_contests.core.data.model.Column;
+import by.anegin.telegram_contests.core.data.model.Data;
+import by.anegin.telegram_contests.core.di.AppComponent;
+import by.anegin.telegram_contests.core.ui.model.UiChart;
+import by.anegin.telegram_contests.core.ui.view.ChartView;
+import by.anegin.telegram_contests.core.ui.view.MiniChartView;
+import by.anegin.telegram_contests.core.utils.CompoundButtonHelper;
+import by.anegin.telegram_contests.core.utils.ThemeHelper;
 
 public class MainActivity extends Activity implements CompoundButton.OnCheckedChangeListener {
 
@@ -48,6 +50,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
     private ChartView chartView;
     private LinearLayout layoutGraphs;
+    private TextView textChartName;
 
     private Data data;
     private int currentChartIndex = 0;
@@ -65,6 +68,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
         setContentView(R.layout.activity_main);
 
         chartView = findViewById(R.id.chartView);
+        textChartName = findViewById(R.id.textChartName);
 
         MiniChartView miniChartView = findViewById(R.id.miniChartView);
         miniChartView.attachToChartView(chartView);
@@ -108,7 +112,9 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
         int chartsCount = (data != null && data.charts != null) ? data.charts.size() : 0;
         menu.removeGroup(R.id.action_group_chart_selection);
         for (int i = 0; i < chartsCount; i++) {
-            MenuItem item = menu.add(R.id.action_group_chart_selection, MENUITEM_ID_FIRST + i, i, "Chart " + (i + 1));
+            MenuItem item = menu.add(R.id.action_group_chart_selection,
+                    MENUITEM_ID_FIRST + i, i,
+                    getString(R.string.chart, String.valueOf(i + 1)));
             item.setCheckable(true);
             item.setChecked(currentChartIndex == i);
         }
@@ -156,6 +162,7 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
     private void showChart(int index) {
         currentChartIndex = index;
+
         showExecutor.execute(() -> {
             Data data = this.data;
             if (data == null || data.charts == null || index >= data.charts.size()) return;
@@ -165,7 +172,11 @@ public class MainActivity extends Activity implements CompoundButton.OnCheckedCh
 
             runOnUiThread(() -> {
                 chartView.setUiChart(uiChart, hiddenGraphIds);
+
+                textChartName.setText(getString(R.string.chart, String.valueOf(index + 1)));
+
                 updateGraphsList(chart);
+
                 invalidateOptionsMenu();
             });
         });

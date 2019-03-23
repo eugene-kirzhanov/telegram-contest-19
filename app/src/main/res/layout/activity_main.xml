@@ -15,12 +15,12 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/textChartName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="@string/followers"
             android:textColor="?attr/title_text_color"
             android:textSize="16sp"
             android:textStyle="bold" />

@@ -18,15 +18,15 @@
             android:id="@+id/textChartName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginLeft="16dp"
             android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginRight="16dp"
             android:textColor="?attr/title_text_color"
             android:textSize="16sp"
             android:textStyle="bold"
-            tools:text="@string/statistics" />
+            tools:text="Followers" />
 
-        <by.anegin.telegram_contests.core.ui.view.ChartView
+        <by.anegin.tgcontest.core.ui.view.ChartView
             android:id="@+id/chartView"
             android:layout_width="match_parent"
             android:layout_height="300dp"
@@ -45,14 +45,14 @@
             app:text_color="?attr/chart_text_color"
             app:text_size="13sp" />
 
-        <by.anegin.telegram_contests.core.ui.view.MiniChartView
+        <by.anegin.tgcontest.core.ui.view.MiniChartView
             android:id="@+id/miniChartView"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="16dp"
+            android:layout_marginLeft="16dp"
             android:layout_marginTop="20dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginRight="16dp"
             android:layout_marginBottom="16dp"
             app:chart_line_width="1dp"
             app:fade_color="?attr/minichart_fade_color"
@@ -70,16 +70,9 @@
             android:clipToPadding="false"
             android:divider="?attr/graphs_divider"
             android:orientation="vertical"
-            android:paddingStart="12dp"
             android:paddingLeft="12dp"
             android:showDividers="middle"
-            tools:ignore="RtlSymmetry">
-
-            <include layout="@layout/item_graph" />
-
-            <include layout="@layout/item_graph" />
-
-        </LinearLayout>
+            tools:ignore="RtlHardcoded,RtlSymmetry" />
 
         <View
             android:layout_width="match_parent"

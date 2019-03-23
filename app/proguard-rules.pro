@@ -1,3 +1,3 @@
--keep class by.anegin.telegram_contests.core.ui.view.ChartView$OnUiChartChangeListener
--keep class by.anegin.telegram_contests.core.ui.view.ChartView$OnRangeChangeListener
--keep class by.anegin.telegram_contests.core.ui.view.ChartView$OnGraphVisibilityChangeListener
+-keep class by.anegin.tgcontest.core.ui.view.ChartView$* { *; }
+-keep class by.anegin.tgcontest.core.ui.model.UiDate
+-keep class by.anegin.tgcontest.core.ui.model.UiChart

@@ -7,9 +7,9 @@
     </style>
 
     <style name="AppTheme.Light">
-        <item name="android:windowBackground">@color/background_light</item>
+        <item name="android:windowBackground">@color/bg_light</item>
 
-        <item name="chart_bg_color">@color/chart_background_light</item>
+        <item name="chart_bg_color">@color/chart_bg_light</item>
         <item name="chart_guideline_color">@color/chart_guideline_light</item>
         <item name="minichart_fade_color">@color/minichart_fade_color_light</item>
         <item name="minichart_window_color">@color/minichart_window_color_light</item>
@@ -27,9 +27,9 @@
     </style>
 
     <style name="AppTheme.Dark">
-        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
 
-        <item name="chart_bg_color">@color/chart_background_dark</item>
+        <item name="chart_bg_color">@color/chart_bg_dark</item>
         <item name="chart_guideline_color">@color/chart_guideline_dark</item>
         <item name="minichart_fade_color">@color/minichart_fade_color_dark</item>
         <item name="minichart_window_color">@color/minichart_window_color_dark</item>

@@ -3,9 +3,9 @@
 
     <!-- Light theme -->
 
-    <color name="background_light">#f0f0f0</color>
+    <color name="bg_light">#f0f0f0</color>
 
-    <color name="chart_background_light">#ffffff</color>
+    <color name="chart_bg_light">#fff</color>
     <color name="chart_guideline_light">#e5ebef</color>
     <color name="minichart_fade_color_light">#aaf4f4f8</color>
     <color name="minichart_window_color_light">#dbe7f0</color>
@@ -22,9 +22,9 @@
 
     <!-- Dark theme -->
 
-    <color name="background_dark">#151e27</color>
+    <color name="bg_dark">#151e27</color>
 
-    <color name="chart_background_dark">#1d2733</color>
+    <color name="chart_bg_dark">#1d2733</color>
     <color name="chart_guideline_dark">#131c26</color>
     <color name="minichart_fade_color_dark">#aa151e27</color>
     <color name="minichart_window_color_dark">#2b4256</color>

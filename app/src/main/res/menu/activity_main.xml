@@ -9,6 +9,7 @@
 
     <group
         android:id="@+id/action_group_chart_selection"
-        android:checkableBehavior="single" />
+        android:checkableBehavior="single"
+        android:icon="@drawable/ic_easter2" />
 
 </menu>

@@ -236,15 +236,15 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
 
         canvas.restore();
 
-        // y grids and labels
+        // y grid lines
         synchronized (grids) {
             for (Grid grid : grids) {
-                grid.draw(canvas, yScale);
+                grid.drawLines(canvas, yScale);
             }
         }
         synchronized (hidingGrids) {
             for (Grid grid : hidingGrids) {
-                grid.draw(canvas, yScale);
+                grid.drawLines(canvas, yScale);
             }
         }
 
@@ -256,6 +256,18 @@ public class ChartView extends View implements ScaleAnimationHelper.Callback, To
                 graph.draw(canvas);
             }
             canvas.restore();
+        }
+
+        // y grid labels
+        synchronized (grids) {
+            for (Grid grid : grids) {
+                grid.drawLabels(canvas, yScale);
+            }
+        }
+        synchronized (hidingGrids) {
+            for (Grid grid : hidingGrids) {
+                grid.drawLabels(canvas, yScale);
+            }
         }
 
         // popup

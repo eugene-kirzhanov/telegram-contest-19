@@ -73,7 +73,32 @@ public class Grid {
         anim.start();
     }
 
-    public void draw(Canvas canvas, float yScale) {
+    public void drawLines(Canvas canvas, float yScale) {
+        updateAlpha(yScale);
+        if (alpha == 0f) return;
+
+        linePaint.setAlpha((int) (255 * alpha));
+
+        for (int i = 0; i < LINES_COUNT; i++) {
+            float y = canvas.getHeight() - levels[i] * yScale;
+            canvas.drawLine(0f, y, canvas.getWidth(), y, linePaint);
+        }
+    }
+
+    public void drawLabels(Canvas canvas, float yScale) {
+        updateAlpha(yScale);
+        if (alpha == 0f) return;
+
+        textPaint.setAlpha((int) (255 * alpha));
+
+        for (int i = 0; i < LINES_COUNT; i++) {
+            float y = canvas.getHeight() - levels[i] * yScale;
+            canvas.drawText(titles[i], 0f, y - textPaint.descent(), textPaint);
+        }
+        canvas.drawText("0", 0f, canvas.getHeight() - textPaint.descent(), textPaint);
+    }
+
+    private void updateAlpha(float yScale) {
         if (!hiding) {
             if (yScale == targetYScale) {
                 alpha = 1f;
@@ -83,18 +108,6 @@ public class Grid {
                 alpha = 0f;
             }
         }
-        if (alpha == 0f) return;
-
-        linePaint.setAlpha((int) (255 * alpha));
-        textPaint.setAlpha((int) (255 * alpha));
-
-        for (int i = 0; i < LINES_COUNT; i++) {
-            float y = canvas.getHeight() - levels[i] * yScale;
-            canvas.drawLine(0f, y, canvas.getWidth(), y, linePaint);
-            canvas.drawText(titles[i], 0f, y - textPaint.descent(), textPaint);
-        }
-
-        canvas.drawText("0", 0f, canvas.getHeight() - textPaint.descent(), textPaint);
     }
 
     private String makeLevelTitle(float level) {

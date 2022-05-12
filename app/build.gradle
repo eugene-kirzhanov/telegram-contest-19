@@ -1,17 +1,18 @@
-apply plugin: 'com.android.application'
-
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(rootProject.file('keystore.properties')))
 
 android {
-    compileSdkVersion 28
+    compileSdk 31
 
     defaultConfig {
+        minSdk 14
+        targetSdk 31
+
         applicationId "by.anegin.tgcontest"
-
-        minSdkVersion 14
-        targetSdkVersion 28
-
         versionCode 1
         versionName "1.0.0.00000"
     }
@@ -33,13 +34,16 @@ android {
             signingConfig signingConfigs.testkey
             minifyEnabled true
             shrinkResources true
-            useProguard true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
     }
 }

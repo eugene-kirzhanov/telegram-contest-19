@@ -2,7 +2,7 @@
 https://t.me/contest
 
 
-Multiple charts with swipe/gesture functionality and animations.
+Multiple charts with pan/zoom gestures and animations.
 
 No additional library or frameworks are used.
 
